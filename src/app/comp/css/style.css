@@ -1,0 +1,50 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    text-align: center;
+    font-size: 40px;
+    font-weight: bold;
+}
+
+.third-image {
+    width: 20%;
+    height: auto;
+    margin-top: 100px;
+    justify-self: center;
+    margin-bottom: 10px;
+}
+
+.stylle {
+    margin-top: 100px;
+    justify-self: center;
+}
+
+.header1 {
+    padding-top: 30px;
+    padding-bottom: 30px;
+    padding-left: 16px;
+}
+
+.random-btn {
+    padding: 8px;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: bold;
+}
+
+.start1 {
+    padding: 20px;
+}
+
+.over-bg {
+    padding: 20px;
+}
+
+.over-btn {
+    padding: 10px;
+    margin-top: 10px;
+}
