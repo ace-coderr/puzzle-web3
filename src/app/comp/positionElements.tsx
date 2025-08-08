@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Modal from "../comp/Modal";
+import Modal from "./Modal";
 
 export type Tile = {
     id: number;

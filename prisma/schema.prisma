@@ -1,0 +1,36 @@
+datasource db {
+  provider = "postgresql"
+   url = env("DATABASE_URL")
+
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  walletAddress String    @unique
+  deposits      Deposit[]
+  gameResults   GameResult[]
+  createdAt     DateTime  @default(now())
+}
+
+model Deposit {
+  id           Int       @id @default(autoincrement())
+  amount       Float
+  txSignature  String?
+  depositedAt  DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id])
+  userId       Int
+}
+
+model GameResult {
+  id         Int      @id @default(autoincrement())
+  score      Int
+  moves      Int
+  won        Boolean
+  playedAt   DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     Int
+}

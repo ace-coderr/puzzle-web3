@@ -27,6 +27,30 @@ export function HomeComponent() {
         }
     }, [wallet.publicKey]);
 
+    useEffect(() => {
+        if (wallet.publicKey) {
+            const walletAddress = wallet.publicKey.toBase58();
+
+            fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ walletAddress }),
+            })
+                .then(async res => {
+                    if (!res.ok) {
+                        const text = await res.text(); // Not res.json()
+                        throw new Error(`Server Error (${res.status}): ${text}`);
+                    }
+                    return res.json();
+                })
+                .then(data => console.log("✅ User saved:", data))
+                .catch(err => console.error("❌ Error saving user:", err));
+
+            getUserSOLBalance(walletAddress).then(setUserBalance);
+        }
+    }, [wallet.publicKey]);
+
+
     const handleDeposit = async (amount: number) => {
         try {
             const tx = await sendSolToVault(wallet, amount, GAME_VAULT);
