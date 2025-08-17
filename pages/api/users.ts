@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
+import { getUserSOLBalance } from '@/app/comp/GetUserBalance';
 
 const prisma = new PrismaClient();
 
@@ -16,9 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 where: { walletAddress },
             });
 
+            const onChainBalance = await getUserSOLBalance(walletAddress);
+
             if (!user) {
                 user = await prisma.user.create({
-                    data: { walletAddress },
+                    data: {
+                        walletAddress,
+                        balance: onChainBalance,
+                    },
+                });
+            } else {
+                user = await prisma.user.update({
+                    where: { walletAddress },
+                    data: { balance: onChainBalance },
                 });
             }
 

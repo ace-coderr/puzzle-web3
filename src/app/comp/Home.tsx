@@ -5,16 +5,23 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import "./css/style.css"
 import { PositionElements } from "./positionElements";
 import { getUserSOLBalance } from "./GetUserBalance";
-import { sendSolToVault } from "./SendSolToVault";
 import { Navbar } from "./Navbar";
+import BidComponent from "./bid";
+import RecentActivity from "./recentActivity";
+import {
+    Connection,
+    PublicKey,
+    SystemProgram,
+    Transaction
+} from "@solana/web3.js";
+
 
 const GAME_VAULT = "HHS9PDUQWG7o1pw5MpdmjQ8vjaNwPE6TU2M2GLuR7ox7";
+const SOLANA_RPC_URL = "https://api.devnet.solana.com";
 
 export function HomeComponent() {
-
     const wallet = useWallet();
     const [userBalance, setUserBalance] = useState<number | null>(null);
-    const [depositedAmount, setDeposited] = useState<number>(0);
     const [hasMounted, setHasMounted] = useState(false);
 
     useEffect(() => {
@@ -22,64 +29,90 @@ export function HomeComponent() {
     }, []);
 
     useEffect(() => {
-        if (wallet.publicKey) {
-            getUserSOLBalance(wallet.publicKey.toBase58()).then(setUserBalance);
-        }
-    }, [wallet.publicKey]);
+        if (!wallet.publicKey) return;
 
-    useEffect(() => {
-        if (wallet.publicKey) {
-            const walletAddress = wallet.publicKey.toBase58();
+        const loadUserAndBalance = async () => {
+            const walletAddress = wallet.publicKey!.toBase58();
 
-            fetch('/api/users', {
+            await fetch('/api/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ walletAddress }),
-            })
-                .then(async res => {
-                    if (!res.ok) {
-                        const text = await res.text(); // Not res.json()
-                        throw new Error(`Server Error (${res.status}): ${text}`);
-                    }
-                    return res.json();
-                })
-                .then(data => console.log("✅ User saved:", data))
-                .catch(err => console.error("❌ Error saving user:", err));
+                body: JSON.stringify({ walletAddress })
+            });
 
-            getUserSOLBalance(walletAddress).then(setUserBalance);
-        }
+            const solBalance = await getUserSOLBalance(walletAddress);
+            setUserBalance(solBalance);
+
+            await fetch(`/api/users/${walletAddress}/balance`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ balance: solBalance })
+            });
+        };
+
+        loadUserAndBalance();
     }, [wallet.publicKey]);
 
+    const handlePlaceBid = async (amount: number) => {
+        if (!wallet.publicKey) return alert("Please connect your wallet");
+        if (amount <= 0) return alert("Enter a valid bid amount");
 
-    const handleDeposit = async (amount: number) => {
         try {
-            const tx = await sendSolToVault(wallet, amount, GAME_VAULT);
-            alert("✅ Deposit successful!\nTx:" + tx);
+            const connection = new Connection(SOLANA_RPC_URL, "confirmed");
+            const lamports = Math.floor(amount * 1e9);
 
-            if (wallet.publicKey) {
-                getUserSOLBalance(wallet.publicKey.toBase58()).then(setUserBalance);
-                setDeposited(prev => prev + amount)
-            }
-        } catch (err: unknown) {
-            console.error("Deposit failed:", err);
-            if (err instanceof Error) {
-                alert("❌ Deposit failed:" + err.message);
+            const transaction = new Transaction().add(
+                SystemProgram.transfer({
+                    fromPubkey: wallet.publicKey!,
+                    toPubkey: new PublicKey(GAME_VAULT),
+                    lamports
+                })
+            );
+
+            const signature = await wallet.sendTransaction(transaction, connection);
+            await connection.confirmTransaction(signature, "confirmed");
+
+            const newBalance = await getUserSOLBalance(wallet.publicKey!.toBase58());
+            setUserBalance(newBalance);
+
+            const res = await fetch("/api/bids", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    amount,
+                    walletAddress: wallet.publicKey!.toBase58(),
+                    txSignature: signature
+                }),
+            });
+
+            if (res.ok) {
+                alert("Bid placed successfully");
             } else {
-                alert("❌ Deposit failed: Unknown error occured.")
+                alert("Failed to place bid");
             }
+        } catch (error) {
+            console.error(error);
+            alert("Error placing bid. Please try again.");
         }
-    };
+    }
 
     if (!hasMounted) return null;
 
     return (
         <div>
-            <Navbar
-                onDeposit={handleDeposit}
-                balance={userBalance}
-                deposited={depositedAmount}
-            />
+            <Navbar balance={userBalance} />
             <PositionElements />
+
+            {wallet.publicKey ? (
+                <div className="flex justify-center gap-10 mt-10">
+                    <BidComponent onBid={handlePlaceBid} />
+                    <RecentActivity />
+                </div>
+            ) : (
+                <div className="mt-10 text-center text-white text-lg">
+                    Please connect your wallet to start bidding.
+                </div>
+            )}
         </div>
     );
 }

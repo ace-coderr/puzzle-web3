@@ -1,7 +1,6 @@
 datasource db {
   provider = "postgresql"
-   url = env("DATABASE_URL")
-
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -9,28 +8,68 @@ generator client {
 }
 
 model User {
-  id            Int       @id @default(autoincrement())
-  walletAddress String    @unique
-  deposits      Deposit[]
+  id            Int           @id @default(autoincrement())
+  walletAddress String        @unique
+  balance       Float         @default(0)
+  transactions  Transaction[]
   gameResults   GameResult[]
-  createdAt     DateTime  @default(now())
+  bids          Bid[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([walletAddress])
 }
 
-model Deposit {
-  id           Int       @id @default(autoincrement())
-  amount       Float
-  txSignature  String?
-  depositedAt  DateTime  @default(now())
-  user         User      @relation(fields: [userId], references: [id])
-  userId       Int
+model Transaction {
+  id        Int             @id @default(autoincrement())
+  amount    Float
+  type      TransactionType
+  user      User            @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model GameResult {
-  id         Int      @id @default(autoincrement())
-  score      Int
-  moves      Int
-  won        Boolean
-  playedAt   DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id])
-  userId     Int
+  id        Int      @id @default(autoincrement())
+  result    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  bids      Bid[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Bid {
+  id           Int         @id @default(autoincrement())
+  amount       Float
+  txSignature  String?
+  status       BidStatus   @default(PENDING)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  user         User        @relation(fields: [userId], references: [id])
+  userId       Int
+  gameResult   GameResult? @relation(fields: [gameResultId], references: [id])
+  gameResultId Int?
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  BID
+}
+
+enum BidStatus {
+  PENDING
+  SUCCESS
+  FAILED
 }
