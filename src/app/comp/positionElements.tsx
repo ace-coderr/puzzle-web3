@@ -11,6 +11,43 @@ export type Tile = {
     bgY: number;
 };
 
+async function saveResult(result: "WIN" | "LOSE",
+    opts: {
+        walletAddress?: string,
+        moves: number,
+        time: number,
+        bidding: number
+    }) {
+    if (!opts.walletAddress) {
+        console.log("🕹️ Demo mode: result not recorded.");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/game-results", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                walletAddress: opts.walletAddress,
+                moves: opts.moves,
+                score: opts.time,
+                bidding: opts.bidding,
+                won: result === "WIN",
+            }),
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            console.error("❌ Failed to save result:", error);
+        } else {
+            const data = await res.json();
+            console.log("✅ Game result saved:", data);
+        }
+    } catch (err) {
+        console.error("❌ Error saving result:", err);
+    }
+}
+
 export function PositionElements() {
     const [imageUrl, setImageUrl] = useState<string>('./images/wall.jpg')
     const [tiles, setTiles] = useState<Tile[]>([])
@@ -22,6 +59,8 @@ export function PositionElements() {
     const [time, setTime] = useState<number>(0)
     const [timerActive, setTimerActive] = useState<boolean>(false)
     const [showStartPage, setShowStartPage] = useState(true)
+    const [walletAddress, setWalletAddress] = useState<string | undefined>(undefined);
+    const [resultSaved, setResultSaved] = useState<boolean>(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     function generateTiles(imageUrl: string): Tile[] {
@@ -37,19 +76,46 @@ export function PositionElements() {
 
         const shuffled = [...bgPositions].sort(() => Math.random() - 0.5);
 
-        const tiles: Tile[] = bgPositions.map(([bgX, bgY], i) => {
+        return bgPositions.map(([bgX, bgY], i) => {
             const [x, y] = shuffled[i];
-            return {
-                id: i,
-                x,
-                y,
-                bgX,
-                bgY,
-            };
+            return { id: i, x, y, bgX, bgY };
         });
-
-        return tiles;
     }
+
+    useEffect(() => {
+        if (tiles.length === 0 || resultSaved) return;
+
+        const hasWon = tiles.every((tile) => tile.x === tile.bgX && tile.y === tile.bgY);
+
+        if (hasWon) {
+            setIsWin(true);
+            setTimerActive(false);
+
+            saveResult("WIN", {
+                walletAddress,
+                moves: moveCount,
+                time,
+                bidding: 50,
+            });
+
+            setResultSaved(true);
+
+        } else if (moveCount >= 20 || time >= 60) {
+            setIsGameOver(true);
+            setTimerActive(false);
+
+            saveResult("LOSE", {
+                walletAddress,
+                moves: moveCount,
+                time,
+                bidding: 50,
+            });
+
+            setResultSaved(true);
+
+        }
+    }, [tiles, moveCount, time, walletAddress, resultSaved]);
+
 
     useEffect(() => {
         if (!timerActive) return;
@@ -63,6 +129,7 @@ export function PositionElements() {
                 return t + 1;
             });
         }, 1000);
+
         return () => clearInterval(interval);
     }, [timerActive])
 
@@ -72,7 +139,7 @@ export function PositionElements() {
             const url = URL.createObjectURL(file)
             setImageUrl(url)
         }
-    }
+    };
 
     const handleRandomImage = () => {
         const seed = Math.floor(Math.random() * 1000)
@@ -80,9 +147,9 @@ export function PositionElements() {
         setImageUrl(url)
     }
 
-    const handleDragStart = (tile: Tile) => {
-        setDraggedTile(tile);
-    };
+
+    // --- TILE DRAG/DROP ---
+    const handleDragStart = (tile: Tile) => setDraggedTile(tile);
 
     const handleDragOver = (e: React.DragEvent, tile: Tile) => {
         e.preventDefault();
@@ -114,6 +181,12 @@ export function PositionElements() {
         setMoveCount((prev) => prev + 1)
     };
 
+    const handleDragEnd = () => {
+        setDraggedTile(null)
+        setHoveredTile(null)
+    }
+
+    // --- RESTART ---
     const handleRestart = () => {
         const newTiles = generateTiles(imageUrl);
         setTiles(newTiles);
@@ -122,6 +195,7 @@ export function PositionElements() {
         setIsWin(false);
         setTime(0);
         setTimerActive(false);
+        setResultSaved(false);
     };
 
     useEffect(() => {
@@ -130,24 +204,6 @@ export function PositionElements() {
             setTiles(newTiles);
         }
     }, [imageUrl]);
-
-    const handleDragEnd = () => {
-        setDraggedTile(null)
-        setHoveredTile(null)
-    }
-
-    useEffect(() => {
-        if (tiles.length === 0) return;
-
-        const hasWon = tiles.every((tile) => tile.x === tile.bgX && tile.y === tile.bgY)
-        if (hasWon) {
-            setIsWin(true)
-            setTimerActive(false)
-        } else if (moveCount >= 20 || time >= 60) {
-            setIsGameOver(true)
-            setTimerActive(false)
-        }
-    }, [tiles, moveCount, time])
 
     return (
         <>
@@ -235,7 +291,10 @@ export function PositionElements() {
                     title="🎉 You Win!"
                     message={`You solved it in ${moveCount} moves and ${time}s.`}
                     show={isWin}
-                    onClose={() => setIsWin(false)}
+                    onClose={() => {
+                        setIsWin(false);
+                        handleRestart();
+                    }}
                     onConfirm={handleRestart}
                     confirmText="Play Again"
                 />
@@ -244,7 +303,10 @@ export function PositionElements() {
                     title="💀 Game Over 💀"
                     message={`You took too long or used too many moves.\nMoves: ${moveCount}, Time: ${time}s`}
                     show={isGameOver}
-                    onClose={() => setIsGameOver(false)}
+                    onClose={() => {
+                        setIsGameOver(false);
+                        handleRestart();
+                    }}
                     onConfirm={handleRestart}
                     confirmText="Retry"
                 />

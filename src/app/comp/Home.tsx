@@ -16,7 +16,7 @@ import {
 } from "@solana/web3.js";
 
 
-const GAME_VAULT = "HHS9PDUQWG7o1pw5MpdmjQ8vjaNwPE6TU2M2GLuR7ox7";
+const GAME_VAULT = "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
 const SOLANA_RPC_URL = "https://api.devnet.solana.com";
 
 export function HomeComponent() {
@@ -70,7 +70,14 @@ export function HomeComponent() {
             );
 
             const signature = await wallet.sendTransaction(transaction, connection);
-            await connection.confirmTransaction(signature, "confirmed");
+            const confirmation = await connection.confirmTransaction(signature, "confirmed");
+            let status = "PENDING";
+
+            if (!confirmation.value.err) {
+                status = "SUCCESS";
+            } else if (confirmation.value.err) {
+                status = "FAILED";
+            }
 
             const newBalance = await getUserSOLBalance(wallet.publicKey!.toBase58());
             setUserBalance(newBalance);
@@ -81,7 +88,8 @@ export function HomeComponent() {
                 body: JSON.stringify({
                     amount,
                     walletAddress: wallet.publicKey!.toBase58(),
-                    txSignature: signature
+                    txSignature: signature,
+                    status
                 }),
             });
 
