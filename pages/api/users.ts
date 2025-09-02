@@ -4,6 +4,19 @@ import { getUserSOLBalance } from '@/app/comp/GetUserBalance';
 
 const prisma = new PrismaClient();
 
+// Helper: generate unique customId
+async function generateUniqueCustomId() {
+    let customId = Math.floor(100000 + Math.random() * 900000); // 6-digit number
+    let exists = await prisma.user.findUnique({ where: { customId } });
+
+    while (exists) {
+        customId = Math.floor(100000 + Math.random() * 900000);
+        exists = await prisma.user.findUnique({ where: { customId } });
+    }
+
+    return customId;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method === 'POST') {
         const { walletAddress } = req.body;
@@ -20,10 +33,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const onChainBalance = await getUserSOLBalance(walletAddress);
 
             if (!user) {
+                const customId = await generateUniqueCustomId();
+
                 user = await prisma.user.create({
                     data: {
                         walletAddress,
                         balance: onChainBalance,
+                        customId,   // ✅ required field provided
                     },
                 });
             } else {
