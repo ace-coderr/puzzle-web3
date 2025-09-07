@@ -32,6 +32,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             const onChainBalance = await getUserSOLBalance(walletAddress);
 
+            if (onChainBalance === 0) {
+                console.warn(
+                    `⚠️ RPC fetch returned balance=0 for ${walletAddress}. 
+                    Could be RPC failure or empty wallet.`
+                );
+            }
+
             if (!user) {
                 const customId = await generateUniqueCustomId();
 
@@ -39,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     data: {
                         walletAddress,
                         balance: onChainBalance,
-                        customId,   // ✅ required field provided
+                        customId,
                     },
                 });
             } else {
