@@ -63,7 +63,7 @@ export default function BidComponent({ onBid }: BidComponentProps) {
                     disabled={loading || bidAmount <= 0}
                     className="w-full py-2 bg-green-500 rounded-lg font-bold text-black disabled:opacity-50"
                 >
-                    {loading ? "Processing..." : "PLAY"}
+                    {loading ? "Processing..." : "Bid Now"}
                 </button>
             </div>
         </div>
