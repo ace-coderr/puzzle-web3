@@ -12,12 +12,8 @@ export type Tile = {
 };
 
 async function saveResult(result: "WIN" | "LOSE",
-    opts: {
-        walletAddress?: string,
-        moves: number,
-        time: number,
-        bidding: number
-    }) {
+    opts: { walletAddress?: string, moves: number, time: number, bidding: number }
+) {
     if (!opts.walletAddress) {
         console.log("🕹️ Demo mode: result not recorded.");
         return;
@@ -48,7 +44,17 @@ async function saveResult(result: "WIN" | "LOSE",
     }
 }
 
-export function PositionElements() {
+// shuffle helper
+function shuffleArray<T>(array: T[]): T[] {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+export function PositionElements({ onRestart }: { onRestart?: () => void }) {
     const [imageUrl, setImageUrl] = useState<string>('./images/wall.jpg')
     const [tiles, setTiles] = useState<Tile[]>([])
     const [draggedTile, setDraggedTile] = useState<Tile | null>(null)
@@ -74,7 +80,7 @@ export function PositionElements() {
             }
         }
 
-        const shuffled = [...bgPositions].sort(() => Math.random() - 0.5);
+        const shuffled = shuffleArray(bgPositions);
 
         return bgPositions.map(([bgX, bgY], i) => {
             const [x, y] = shuffled[i];
@@ -115,7 +121,6 @@ export function PositionElements() {
 
         }
     }, [tiles, moveCount, time, walletAddress, resultSaved]);
-
 
     useEffect(() => {
         if (!timerActive) return;
@@ -187,24 +192,34 @@ export function PositionElements() {
     }
 
     // --- RESTART ---
-    const handleRestart = () => {
-        const newTiles = generateTiles(imageUrl);
+    const handleRestart = (newImage?: string) => {
+        const finalImage = newImage || "./images/wall.jpg"; // ✅ fallback to default
+        setImageUrl(finalImage);
+        const newTiles = generateTiles(finalImage);
         setTiles(newTiles);
         setMoveCount(0);
         setIsGameOver(false);
         setIsWin(false);
         setTime(0);
         setTimerActive(false);
-        setResultSaved(false);
     };
 
+    // Initial puzzle
     useEffect(() => {
-        if (imageUrl) {
-            const newTiles = generateTiles(imageUrl);
-            setTiles(newTiles);
-        }
-    }, [imageUrl]);
+        handleRestart("./images/wall.jpg");
+    }, []);
 
+    // After bid success → listen for custom event
+    useEffect(() => {
+        const listener = () => {
+            const newImage = `https://picsum.photos/seed/${Date.now()}/800/480`; // 🎯 fetch new image
+            handleRestart(newImage);
+        };
+        document.addEventListener("puzzle-restart", listener);
+        return () => document.removeEventListener("puzzle-restart", listener);
+    }, []);
+
+    // RENDER
     return (
         <>
 

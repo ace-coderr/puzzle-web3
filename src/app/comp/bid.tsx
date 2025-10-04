@@ -2,9 +2,10 @@ import { useState } from "react";
 
 interface BidComponentProps {
     onBid: (amount: number) => Promise<void>;
+    onBidSuccess?: () => void;
 }
 
-export default function BidComponent({ onBid }: BidComponentProps) {
+export default function BidComponent({ onBid, onBidSuccess }: BidComponentProps) {
     const [bidAmount, setBidAmount] = useState<number>(0.01);
     const [loading, setLoading] = useState(false);
 
@@ -16,6 +17,9 @@ export default function BidComponent({ onBid }: BidComponentProps) {
         setLoading(true);
         try {
             await onBid(Number(bidAmount.toFixed(4))); // keep precision at 4 decimals
+            if (onBidSuccess) {
+                onBidSuccess();
+            }
         } finally {
             setLoading(false);
         }

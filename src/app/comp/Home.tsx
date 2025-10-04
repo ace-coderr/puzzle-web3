@@ -95,6 +95,7 @@ export function HomeComponent() {
 
             if (res.ok) {
                 alert("Bid placed successfully");
+                document.dispatchEvent(new Event("puzzle-restart"));
             } else {
                 alert("Failed to place bid");
             }
