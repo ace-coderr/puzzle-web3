@@ -13,10 +13,10 @@ export default function BidComponent({ onBid, onBidSuccess }: BidComponentProps)
     const quickAmounts: number[] = [0.0001, 0.01, 1, 2];
 
     const handleBidClick = async () => {
-        if (bidAmount <= 0) return; // prevent invalid bids
+        if (bidAmount <= 0) return;
         setLoading(true);
         try {
-            await onBid(Number(bidAmount.toFixed(4))); // keep precision at 4 decimals
+            await onBid(Number(bidAmount.toFixed(4)))
             if (onBidSuccess) {
                 onBidSuccess();
             }

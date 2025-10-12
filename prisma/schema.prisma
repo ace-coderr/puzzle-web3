@@ -22,16 +22,29 @@ model User {
 }
 
 model GameResult {
-  id        Int      @id @default(autoincrement())
-  gameId    String   @unique
-  score     Int
-  moves     Int
-  bidding   Decimal  @db.Decimal(18, 8)
-  won       Boolean
+  id        String   @id @default(cuid())
   user      User     @relation(fields: [userId], references: [id])
   userId    Int
-  bids      Bid[]
+  gameId    String   @unique
+  score     Int      @default(0)
+  moves     Int      @default(0)
+  won       Boolean  @default(false)
+  bidding   Decimal  @default(0) @db.Decimal(18, 8)
+  claimed   Boolean  @default(false)
   createdAt DateTime @default(now())
+  bid       Bid?
+}
+
+model Bid {
+  id           Int           @id @default(autoincrement())
+  amount       Decimal       @db.Decimal(18, 8)
+  status       BidStatus     @default(PENDING)
+  user         User          @relation(fields: [userId], references: [id])
+  userId       Int
+  gameResult   GameResult    @relation(fields: [gameResultId], references: [id])
+  gameResultId String        @unique
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
 }
 
 model Transaction {
@@ -41,21 +54,9 @@ model Transaction {
   status    TransactionStatus
   user      User              @relation(fields: [userId], references: [id])
   userId    Int
-  bid       Bid?              @relation("TransactionToBid")
+  bid       Bid?              @relation(fields: [bidId], references: [id])
+  bidId     Int?
   createdAt DateTime          @default(now())
-}
-
-model Bid {
-  id            Int          @id @default(autoincrement())
-  amount        Decimal      @db.Decimal(18,8)
-  status        BidStatus
-  user          User         @relation(fields: [userId], references: [id])
-  userId        Int
-  gameResult    GameResult   @relation(fields: [gameResultId], references: [id])
-  gameResultId  Int          @unique
-  transaction   Transaction  @relation("TransactionToBid", fields: [transactionId], references: [id])
-  transactionId Int          @unique
-  createdAt     DateTime     @default(now())
 }
 
 enum BidStatus {

@@ -11,8 +11,9 @@ export type Tile = {
     bgY: number;
 };
 
-async function saveResult(result: "WIN" | "LOSE",
-    opts: { walletAddress?: string, moves: number, time: number, bidding: number }
+async function saveResult(
+    result: "WIN" | "LOSE",
+    opts: { walletAddress?: string; moves: number; time: number; bidding: number }
 ) {
     if (!opts.walletAddress) {
         console.log("🕹️ Demo mode: result not recorded.");
@@ -69,6 +70,7 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
     const [resultSaved, setResultSaved] = useState<boolean>(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    // Generate puzzle tiles
     function generateTiles(imageUrl: string): Tile[] {
         const leftPositions = [0, 8, 16, 24, 32];
         const topPositions = [0, 6, 12, 18];
@@ -88,6 +90,8 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
         });
     }
 
+
+    // Check win or loss
     useEffect(() => {
         if (tiles.length === 0 || resultSaved) return;
 
@@ -96,32 +100,20 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
         if (hasWon) {
             setIsWin(true);
             setTimerActive(false);
-
-            saveResult("WIN", {
-                walletAddress,
-                moves: moveCount,
-                time,
-                bidding: 50,
-            });
-
             setResultSaved(true);
 
+            saveResult("WIN", { walletAddress, moves: moveCount, time, bidding: 50 });
         } else if (moveCount >= 20 || time >= 60) {
             setIsGameOver(true);
             setTimerActive(false);
-
-            saveResult("LOSE", {
-                walletAddress,
-                moves: moveCount,
-                time,
-                bidding: 50,
-            });
-
             setResultSaved(true);
 
+            saveResult("LOSE", { walletAddress, moves: moveCount, time, bidding: 50 });
         }
     }, [tiles, moveCount, time, walletAddress, resultSaved]);
 
+
+    // Timer (1 minute max)
     useEffect(() => {
         if (!timerActive) return;
 
@@ -130,6 +122,7 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
                 if (t >= 59) {
                     clearInterval(interval);
                     setTimerActive(false);
+                    setIsGameOver(true)
                 }
                 return t + 1;
             });
@@ -138,6 +131,8 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
         return () => clearInterval(interval);
     }, [timerActive])
 
+
+    // Image Handlers
     const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
@@ -165,7 +160,7 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
 
     const handleDrop = (e: React.DragEvent, targetTile: Tile) => {
         e.preventDefault();
-        if (!draggedTile) return;
+        if (!draggedTile || resultSaved) return;
 
         const updatedTiles = tiles?.map((tile) => {
             if (tile.id === draggedTile.id) {
@@ -191,9 +186,10 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
         setHoveredTile(null)
     }
 
+
     // --- RESTART ---
     const handleRestart = (newImage?: string) => {
-        const finalImage = newImage || "./images/wall.jpg"; // ✅ fallback to default
+        const finalImage = newImage || "./images/wall.jpg";
         setImageUrl(finalImage);
         const newTiles = generateTiles(finalImage);
         setTiles(newTiles);
@@ -202,27 +198,35 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
         setIsWin(false);
         setTime(0);
         setTimerActive(false);
+        setResultSaved(false)
     };
+
 
     // Initial puzzle
     useEffect(() => {
         handleRestart("./images/wall.jpg");
     }, []);
 
+
     // After bid success → listen for custom event
     useEffect(() => {
         const listener = () => {
-            const newImage = `https://picsum.photos/seed/${Date.now()}/800/480`; // 🎯 fetch new image
+            const newImage = `https://picsum.photos/seed/${Date.now()}/800/480`;
             handleRestart(newImage);
         };
+
         document.addEventListener("puzzle-restart", listener);
         return () => document.removeEventListener("puzzle-restart", listener);
     }, []);
 
+    // Claim reward
+    const handleClaimReward = () => {
+        window.location.href = "/rewards";
+    }
+
     // RENDER
     return (
         <>
-
             {showStartPage && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/40">
                     <div className="bg-white start1 bg-opacity-80 p-8 rounded shadow-lg text-center max-w-sm">
@@ -296,10 +300,9 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
                     />
                 </div>
 
-
                 <div className="mt-4 text-center">
                     <p className="text-xl">Moves: {moveCount} / 20</p>
-                    <p className="text-xl">Time: {time}s</p>
+                    <p className="text-xl">Time: {time}s / 60s</p>
                 </div>
 
                 <Modal
