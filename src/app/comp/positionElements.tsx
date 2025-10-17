@@ -11,6 +11,7 @@ export type Tile = {
     bgY: number;
 };
 
+// Save to backend
 async function saveResult(
     result: "WIN" | "LOSE",
     opts: { walletAddress?: string; moves: number; time: number; bidding: number }
@@ -55,7 +56,7 @@ function shuffleArray<T>(array: T[]): T[] {
     return arr;
 }
 
-export function PositionElements({ onRestart }: { onRestart?: () => void }) {
+export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const [imageUrl, setImageUrl] = useState<string>('./images/wall.jpg')
     const [tiles, setTiles] = useState<Tile[]>([])
     const [draggedTile, setDraggedTile] = useState<Tile | null>(null)
@@ -69,13 +70,14 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
     const [walletAddress, setWalletAddress] = useState<string | undefined>(undefined);
     const [resultSaved, setResultSaved] = useState<boolean>(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const [currentBid, setCurrentBid] = useState<number>(0);
 
     // Generate puzzle tiles
     function generateTiles(imageUrl: string): Tile[] {
         const leftPositions = [0, 8, 16, 24, 32];
         const topPositions = [0, 6, 12, 18];
-
         const bgPositions: [number, number][] = [];
+
         for (let y of topPositions) {
             for (let x of leftPositions) {
                 bgPositions.push([x, y]);
@@ -101,19 +103,17 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
             setIsWin(true);
             setTimerActive(false);
             setResultSaved(true);
-
-            saveResult("WIN", { walletAddress, moves: moveCount, time, bidding: 50 });
+            saveResult("WIN", { walletAddress, moves: moveCount, time, bidding: currentBid });
         } else if (moveCount >= 20 || time >= 60) {
             setIsGameOver(true);
             setTimerActive(false);
             setResultSaved(true);
-
-            saveResult("LOSE", { walletAddress, moves: moveCount, time, bidding: 50 });
+            saveResult("LOSE", { walletAddress, moves: moveCount, time, bidding: currentBid });
         }
     }, [tiles, moveCount, time, walletAddress, resultSaved]);
 
 
-    // Timer (1 minute max)
+    // Timer Logic
     useEffect(() => {
         if (!timerActive) return;
 
@@ -150,7 +150,6 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
 
     // --- TILE DRAG/DROP ---
     const handleDragStart = (tile: Tile) => setDraggedTile(tile);
-
     const handleDragOver = (e: React.DragEvent, tile: Tile) => {
         e.preventDefault();
         if (draggedTile && draggedTile.id !== tile.id) {
@@ -177,8 +176,7 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
         if (moveCount === 0) {
             setTimerActive(true);
         }
-
-        setMoveCount((prev) => prev + 1)
+        setMoveCount((prev) => prev + 1);
     };
 
     const handleDragEnd = () => {
@@ -189,7 +187,7 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
 
     // --- RESTART ---
     const handleRestart = (newImage?: string) => {
-        const finalImage = newImage || "./images/wall.jpg";
+        const finalImage = newImage || imageUrl;
         setImageUrl(finalImage);
         const newTiles = generateTiles(finalImage);
         setTiles(newTiles);
@@ -201,28 +199,24 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
         setResultSaved(false)
     };
 
+    // Listen for bid success event
+    useEffect(() => {
+        const handleBidRestart = (e: any) => {
+            const { imageUrl, walletAddress, amount } = e.detail || {};
+            setWalletAddress(walletAddress);
+            setCurrentBid(amount || 0);
+            handleRestart(imageUrl);
+            setTimerActive(true);
+            setTime(0);
+        };
+        document.addEventListener("puzzle-restart", handleBidRestart);
+        return () => document.removeEventListener("puzzle-restart", handleBidRestart);
+    }, []);
 
     // Initial puzzle
     useEffect(() => {
         handleRestart("./images/wall.jpg");
     }, []);
-
-
-    // After bid success → listen for custom event
-    useEffect(() => {
-        const listener = () => {
-            const newImage = `https://picsum.photos/seed/${Date.now()}/800/480`;
-            handleRestart(newImage);
-        };
-
-        document.addEventListener("puzzle-restart", listener);
-        return () => document.removeEventListener("puzzle-restart", listener);
-    }, []);
-
-    // Claim reward
-    const handleClaimReward = () => {
-        window.location.href = "/rewards";
-    }
 
     // RENDER
     return (
@@ -305,31 +299,36 @@ export function PositionElements({ onRestart }: { onRestart?: () => void }) {
                     <p className="text-xl">Time: {time}s / 60s</p>
                 </div>
 
+                {/* ✅ WIN MODAL */}
                 <Modal
                     title="🎉 You Win!"
                     message={`You solved it in ${moveCount} moves and ${time}s.`}
                     show={isWin}
                     onClose={() => {
                         setIsWin(false);
-                        handleRestart();
+                        handleRestart(); // just restart puzzle
                     }}
                     onConfirm={handleRestart}
                     confirmText="Play Again"
                 />
 
+                {/* 💀 GAME OVER MODAL */}
                 <Modal
                     title="💀 Game Over 💀"
                     message={`You took too long or used too many moves.\nMoves: ${moveCount}, Time: ${time}s`}
                     show={isGameOver}
                     onClose={() => {
                         setIsGameOver(false);
-                        handleRestart();
+                        onRetry?.(); // ✅ instead of handleRestart()
                     }}
-                    onConfirm={handleRestart}
+                    onConfirm={() => {
+                        setIsGameOver(false);
+                        onRetry?.(); // ✅ show bid screen again
+                    }}
                     confirmText="Retry"
                 />
+
             </div>
         </>
     );
 }
-

@@ -48,15 +48,16 @@ model Bid {
 }
 
 model Transaction {
-  id        Int               @id @default(autoincrement())
-  amount    Decimal           @db.Decimal(18, 8)
-  type      TransactionType
-  status    TransactionStatus
-  user      User              @relation(fields: [userId], references: [id])
-  userId    Int
-  bid       Bid?              @relation(fields: [bidId], references: [id])
-  bidId     Int?
-  createdAt DateTime          @default(now())
+  id           Int               @id @default(autoincrement())
+  amount       Decimal           @db.Decimal(18, 8)
+  type         TransactionType
+  status       TransactionStatus
+  user         User              @relation(fields: [userId], references: [id])
+  userId       Int
+  bid          Bid?              @relation(fields: [bidId], references: [id])
+  bidId        Int?
+  txSignature  String?           // ✅ optional transaction hash from Solana
+  createdAt    DateTime          @default(now())
 }
 
 enum BidStatus {

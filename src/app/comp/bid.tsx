@@ -1,75 +1,127 @@
+"use client";
+
 import { useState } from "react";
+import { Connection, clusterApiUrl, LAMPORTS_PER_SOL, Transaction, SystemProgram } from "@solana/web3.js";
 
-interface BidComponentProps {
-    onBid: (amount: number) => Promise<void>;
-    onBidSuccess?: () => void;
-}
+type BidComponentProps = {
+  wallet: any;
+  onBalanceUpdate: (balance: number) => void;
+};
 
-export default function BidComponent({ onBid, onBidSuccess }: BidComponentProps) {
-    const [bidAmount, setBidAmount] = useState<number>(0.01);
-    const [loading, setLoading] = useState(false);
+export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentProps) {
+  const [amount, setAmount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    // Quick-select amounts
-    const quickAmounts: number[] = [0.0001, 0.01, 1, 2];
+  const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+  const quickOptions = [0.1, 0.5, 1, 2];
 
-    const handleBidClick = async () => {
-        if (bidAmount <= 0) return;
-        setLoading(true);
-        try {
-            await onBid(Number(bidAmount.toFixed(4)))
-            if (onBidSuccess) {
-                onBidSuccess();
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleBid = async () => {
+    if (!wallet?.publicKey) {
+      alert("Please connect your wallet first!");
+      return;
+    }
 
-    return (
-        <div className="flex justify-center items-center bg-gray-900 text-white">
-            <div className="bg-white border border-pink-500 rounded-xl p-6 shadow-lg text-black space-y-6 w-full max-w-md">
-                <h2 className="text-center text-xl font-bold">Place Your Bid</h2>
+    if (!amount || amount <= 0) {
+      alert("Please enter a valid bid amount.");
+      return;
+    }
 
-                {/* Input for custom bid */}
-                <div>
-                    <label className="block mb-1 text-sm text-gray-700">
-                        Bid Amount (SOL)
-                    </label>
-                    <input
-                        type="number"
-                        step="0.0001"
-                        min="0.0001"
-                        value={bidAmount}
-                        onChange={(e) =>
-                            setBidAmount(parseFloat(e.target.value) || 0)
-                        }
-                        className="w-full px-3 py-2 rounded bg-gray-800 border border-pink-500 text-white focus:outline-none focus:ring focus:ring-pink-400"
-                    />
-                </div>
+    try {
+      setLoading(true);
 
-                {/* Quick-select buttons */}
-                <div className="flex flex-wrap justify-center gap-2">
-                    {quickAmounts.map((amt) => (
-                        <button
-                            key={amt}
-                            onClick={() => setBidAmount(amt)}
-                            className={`px-4 py-2 border border-pink-500 rounded hover:bg-pink-500 ${bidAmount === amt ? "bg-pink-500 text-white" : ""
-                                }`}
-                        >
-                            {amt} SOL
-                        </button>
-                    ))}
-                </div>
+      const lamports = amount * LAMPORTS_PER_SOL;
+      const recipient = wallet.publicKey; // for now, sending to self; replace with your app’s treasury wallet
 
-                {/* Submit button */}
-                <button
-                    onClick={handleBidClick}
-                    disabled={loading || bidAmount <= 0}
-                    className="w-full py-2 bg-green-500 rounded-lg font-bold text-black disabled:opacity-50"
-                >
-                    {loading ? "Processing..." : "Bid Now"}
-                </button>
-            </div>
-        </div>
-    );
+      // Create Solana transaction
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: wallet.publicKey,
+          toPubkey: recipient,
+          lamports,
+        })
+      );
+
+      transaction.feePayer = wallet.publicKey;
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+
+      // ✋ Request manual confirmation from wallet
+      const signedTx = await wallet.signTransaction(transaction);
+      const txSignature = await connection.sendRawTransaction(signedTx.serialize());
+      await connection.confirmTransaction(txSignature, "confirmed");
+
+      console.log("✅ Transaction confirmed:", txSignature);
+
+      // 🔹 Save bid on backend
+      const res = await fetch("/api/bids", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: wallet.publicKey.toString(),
+          amount,
+          status: "SUCCESS",
+          txSignature,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Failed to save bid.");
+
+      // 🔹 Start game after successful confirmation
+      document.dispatchEvent(
+        new CustomEvent("puzzle-restart", {
+          detail: { imageUrl: data.imageUrl, startTime: data.startTime },
+        })
+      );
+
+      document.dispatchEvent(new Event("recent-activity-refresh"));
+
+      alert("✅ Bid placed and confirmed manually! Game starting...");
+    } catch (err: any) {
+      console.error("❌ Bid Error:", err);
+      alert(`Transaction failed: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center bg-gray-900 text-white p-6 rounded-2xl shadow-lg w-[360px]">
+      <h2 className="text-2xl font-bold mb-4">🎯 Place Your Bid</h2>
+
+      {/* Quick-select buttons */}
+      <div className="flex gap-3 mb-4">
+        {quickOptions.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => setAmount(opt)}
+            className={`px-4 py-2 rounded-lg border ${
+              amount === opt ? "bg-blue-600 border-blue-400" : "bg-gray-700 hover:bg-gray-600"
+            }`}
+          >
+            {opt} SOL
+          </button>
+        ))}
+      </div>
+
+      {/* Custom amount input */}
+      <input
+        type="number"
+        placeholder="Enter custom amount"
+        value={amount ?? ""}
+        onChange={(e) => setAmount(Number(e.target.value))}
+        className="w-full p-2 text-center rounded mb-4 bg-white text-black border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+      />
+
+      {/* Place Bid Button */}
+      <button
+        onClick={handleBid}
+        disabled={loading}
+        className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:opacity-60"
+      >
+        {loading ? "Waiting for Confirmation..." : "Place Bid"}
+      </button>
+    </div>
+  );
 }

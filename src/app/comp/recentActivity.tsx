@@ -1,71 +1,58 @@
 "use client";
+
 import { useEffect, useState } from "react";
 
-interface Bid {
-    id: number;
-    amount: number;
-    txSignature?: string | null;
-    status: "PENDING" | "SUCCESS" | "FAILED";
-    createdAt: string;
-    user: { walletAddress: string };
-}
-
 export default function RecentActivity() {
-    const [bids, setBids] = useState<Bid[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [bids, setBids] = useState<any[]>([]);
+
+    const fetchRecentBids = async () => {
+        try {
+            const res = await fetch("/api/bids");
+            if (!res.ok) throw new Error("Failed to fetch bids");
+            const data = await res.json();
+            setBids(data);
+        } catch (err) {
+            console.error("Error loading bids:", err);
+        }
+    };
 
     useEffect(() => {
-        const fetchBids = async () => {
-            try {
-                const res = await fetch("/api/bids");
-                if (res.ok) {
-                    const data = await res.json();
-                    setBids(data);
-                }
-            } catch (error) {
-                console.error("Failed to fetch bids:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchBids();
+        fetchRecentBids();
+        const refreshHandler = () => fetchRecentBids();
+        document.addEventListener("recent-activity-refresh", refreshHandler);
+        return () => document.removeEventListener("recent-activity-refresh", refreshHandler);
     }, []);
 
-    if (loading) return <p className="text-wcenter text-white">Loading recents....</p>
-
     return (
-        <div className="mt-8 max-w-2xl mx-auto bg-gray-900 text-white p-6 rounded-xl shadow-lg">
-            <h2 className="text-lg font-bold mb-4">Recent Activity</h2>
+        <div className="bg-gray-900 text-white rounded-xl p-4 shadow-lg w-full max-w-sm">
+            <h2 className="text-center font-bold mb-3">Recent Activity</h2>
             {bids.length === 0 ? (
-                <p className="text-gray-400">No recent bids yet.</p>
+                <p className="text-gray-400 text-center">No recent bids yet.</p>
             ) : (
                 <ul className="space-y-3">
                     {bids.map((bid) => (
                         <li
                             key={bid.id}
-                            className="flex justify-between items-center border-b border-gray-700 pb-2"
+                            className="border border-gray-700 p-3 rounded-lg bg-gray-800"
                         >
-                            <div>
-                                <p className="font-mono text-sm">
-                                    {bid.user.walletAddress.slice(0, 4)}...
-                                    {bid.user.walletAddress.slice(-4)}
-                                </p>
-                                <p className="text-xs text-gray-400">{new Date(bid.createdAt).toLocaleString()}</p>
-                            </div>
-                            <div className="text-right">
-                                <p className="font-bold">{bid.amount} SOL</p>
-                                <p
-                                    className={`text-xs ${bid.status === "SUCCESS"
-                                            ? "text-green-400"
-                                            : bid.status === "FAILED"
-                                                ? "text-red-400"
-                                                : "text-yellow-400"
-                                        }`}
+                            <p>💰 <strong>{Number(bid.amount)} SOL</strong></p>
+                            <p>Status: <span className={bid.status === "SUCCESS" ? "text-green-400" : "text-red-400"}>{bid.status}</span></p>
+
+                            {/* ✅ Add Solana Explorer link here */}
+                            {bid.transactions?.[0]?.txSignature && (
+                                <a
+                                    href={`https://explorer.solana.com/tx/${bid.transactions[0].txSignature}?cluster=devnet`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-400 underline text-sm"
                                 >
-                                    {bid.status}
-                                </p>
-                            </div>
+                                    View on Solana Explorer
+                                </a>
+                            )}
+
+                            <p className="text-xs text-gray-400">
+                                {new Date(bid.createdAt).toLocaleString()}
+                            </p>
                         </li>
                     ))}
                 </ul>
