@@ -93,25 +93,33 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     }
 
 
-    // Check win or loss
+    // ✅ Check for win or loss
     useEffect(() => {
         if (tiles.length === 0 || resultSaved) return;
 
         const hasWon = tiles.every((tile) => tile.x === tile.bgX && tile.y === tile.bgY);
 
-        if (hasWon) {
-            setIsWin(true);
-            setTimerActive(false);
-            setResultSaved(true);
-            saveResult("WIN", { walletAddress, moves: moveCount, time, bidding: currentBid });
-        } else if (moveCount >= 20 || time >= 60) {
-            setIsGameOver(true);
-            setTimerActive(false);
-            setResultSaved(true);
-            saveResult("LOSE", { walletAddress, moves: moveCount, time, bidding: currentBid });
-        }
-    }, [tiles, moveCount, time, walletAddress, resultSaved]);
+        const handleResult = async () => {
+            if (hasWon) {
+                setIsWin(true);
+                setTimerActive(false);
+                setResultSaved(true);
 
+                await saveResult("WIN", { walletAddress, moves: moveCount, time, bidding: currentBid });
+
+                // 👇 Navigate to reward page after successful win save
+                window.location.href = "/reward";
+            } else if (moveCount >= 20 || time >= 60) {
+                setIsGameOver(true);
+                setTimerActive(false);
+                setResultSaved(true);
+
+                await saveResult("LOSE", { walletAddress, moves: moveCount, time, bidding: currentBid });
+            }
+        };
+
+        handleResult();
+    }, [tiles, moveCount, time, walletAddress, resultSaved]);
 
     // Timer Logic
     useEffect(() => {

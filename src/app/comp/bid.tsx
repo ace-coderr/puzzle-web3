@@ -1,14 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Connection, clusterApiUrl, LAMPORTS_PER_SOL, Transaction, SystemProgram } from "@solana/web3.js";
+import {
+  Connection,
+  clusterApiUrl,
+  LAMPORTS_PER_SOL,
+  Transaction,
+  SystemProgram,
+  PublicKey,
+} from "@solana/web3.js";
+import type { WalletContextState } from "@solana/wallet-adapter-react";
 
 type BidComponentProps = {
-  wallet: any;
-  onBalanceUpdate: (balance: number) => void;
+  wallet: WalletContextState;
+  onBalanceUpdate?: (balance: number) => void;
 };
 
-export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentProps) {
+export default function BidComponent({
+  wallet,
+  onBalanceUpdate,
+}: BidComponentProps) {
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -16,7 +27,7 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
   const quickOptions = [0.1, 0.5, 1, 2];
 
   const handleBid = async () => {
-    if (!wallet?.publicKey) {
+    if (!wallet.publicKey) {
       alert("Please connect your wallet first!");
       return;
     }
@@ -29,30 +40,33 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
     try {
       setLoading(true);
 
+      const fromPubkey = wallet.publicKey;
+      const toPubkey = wallet.publicKey; // same wallet (for demo/test)
       const lamports = amount * LAMPORTS_PER_SOL;
-      const recipient = wallet.publicKey; // for now, sending to self; replace with your app’s treasury wallet
 
-      // Create Solana transaction
+      // ✅ Create transaction
       const transaction = new Transaction().add(
         SystemProgram.transfer({
-          fromPubkey: wallet.publicKey,
-          toPubkey: recipient,
+          fromPubkey,
+          toPubkey,
           lamports,
         })
       );
 
-      transaction.feePayer = wallet.publicKey;
+      transaction.feePayer = fromPubkey;
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
 
-      // ✋ Request manual confirmation from wallet
-      const signedTx = await wallet.signTransaction(transaction);
-      const txSignature = await connection.sendRawTransaction(signedTx.serialize());
+      // ✅ Sign & send
+      const signedTx = await wallet.signTransaction!(transaction);
+      const txSignature = await connection.sendRawTransaction(
+        signedTx.serialize()
+      );
       await connection.confirmTransaction(txSignature, "confirmed");
 
       console.log("✅ Transaction confirmed:", txSignature);
 
-      // 🔹 Save bid on backend
+      // ✅ Notify backend
       const res = await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,19 +79,23 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       });
 
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error || "Failed to save bid.");
 
-      // 🔹 Start game after successful confirmation
+      // ✅ Optional balance update
+      if (onBalanceUpdate) {
+        const newBalance = await connection.getBalance(wallet.publicKey);
+        onBalanceUpdate(newBalance / LAMPORTS_PER_SOL);
+      }
+
+      // ✅ Notify other components
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
           detail: { imageUrl: data.imageUrl, startTime: data.startTime },
         })
       );
-
       document.dispatchEvent(new Event("recent-activity-refresh"));
 
-      alert("✅ Bid placed and confirmed manually! Game starting...");
+      alert("✅ Bid placed successfully! Game starting...");
     } catch (err: any) {
       console.error("❌ Bid Error:", err);
       alert(`Transaction failed: ${err.message}`);
@@ -97,7 +115,9 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
             key={opt}
             onClick={() => setAmount(opt)}
             className={`px-4 py-2 rounded-lg border ${
-              amount === opt ? "bg-blue-600 border-blue-400" : "bg-gray-700 hover:bg-gray-600"
+              amount === opt
+                ? "bg-blue-600 border-blue-400"
+                : "bg-gray-700 hover:bg-gray-600"
             }`}
           >
             {opt} SOL

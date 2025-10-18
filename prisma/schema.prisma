@@ -56,7 +56,7 @@ model Transaction {
   userId       Int
   bid          Bid?              @relation(fields: [bidId], references: [id])
   bidId        Int?
-  txSignature  String?           // ✅ optional transaction hash from Solana
+  txSignature  String?
   createdAt    DateTime          @default(now())
 }
 
