@@ -21,26 +21,25 @@ export default function RewardPage() {
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   // 🔹 Fetch rewards when wallet connects
+  const fetchRewards = async (walletAddress: string) => {
+    try {
+      const res = await fetch(`/api/rewards?wallet=${walletAddress}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load rewards");
+      setRewards(data.rewards || []);
+    } catch (err) {
+      console.error("❌ Error loading rewards:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!wallet.publicKey) return;
-
-    const walletAddress = wallet.publicKey.toBase58();
-    const fetchRewards = async () => {
-      try {
-        const res = await fetch(`/api/rewards?wallet=${walletAddress}`);
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Failed to load rewards");
-        setRewards(data.rewards || []);
-      } catch (err) {
-        console.error("❌ Error loading rewards:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRewards();
+    if (wallet.publicKey) {
+      const walletAddress = wallet.publicKey.toBase58();
+      fetchRewards(walletAddress);
+    }
   }, [wallet.publicKey]);
-
 
   // 🔹 Handle reward claim
   const handleClaim = async (reward: Reward) => {
@@ -52,7 +51,6 @@ export default function RewardPage() {
     setLoadingId(reward.id);
 
     try {
-      // Notify backend (simulate claim)
       const res = await fetch("/api/rewards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,13 +61,22 @@ export default function RewardPage() {
       });
 
       const data = await res.json();
+
       if (!res.ok) throw new Error(data.error || "Reward claim failed.");
 
+      // ✅ Update UI immediately
       setRewards((prev) =>
         prev.map((r) => (r.id === reward.id ? { ...r, claimed: true } : r))
       );
 
-      alert(`✅ ${reward.title} claimed! ${reward.amount} SOL sent to your wallet.`);
+      // ✅ Refresh data after short delay
+      setTimeout(() => {
+        fetchRewards(wallet.publicKey!.toBase58());
+      }, 1000);
+
+      alert(
+        `✅ ${reward.title} claimed!\n${reward.amount} SOL sent to your wallet.\n\nTx: ${data.txSignature}`
+      );
     } catch (err: any) {
       console.error("❌ Claim error:", err);
       alert(`Failed to claim reward: ${err.message}`);
@@ -85,6 +92,10 @@ export default function RewardPage() {
       </div>
     );
   }
+
+  // 🔹 Determine first unclaimed reward (for main Claim button)
+  const nextReward = rewards.find((r) => !r.claimed) || null;
+  const hasRewardToClaim = !!nextReward;
 
   return (
     <main className="flex flex-col items-center py-10 px-6 bg-gray-950 min-h-screen text-white">
@@ -103,7 +114,7 @@ export default function RewardPage() {
             No available rewards yet. Keep playing to earn some!
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
             {rewards.map((reward) => (
               <div
                 key={reward.id}
@@ -118,7 +129,6 @@ export default function RewardPage() {
                   <span className="font-semibold text-blue-400">
                     {reward.amount} SOL
                   </span>
-
                   <Button
                     disabled={reward.claimed || loadingId === reward.id}
                     onClick={() => handleClaim(reward)}
@@ -136,7 +146,23 @@ export default function RewardPage() {
           </div>
         )}
 
-        <div className="mt-10 text-center">
+        {/* 🔹 Main Claim Button always visible */}
+        <div className="text-center mb-10">
+          <Button
+            disabled={!hasRewardToClaim || loadingId !== null}
+            onClick={() => nextReward && handleClaim(nextReward)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl disabled:opacity-60"
+          >
+            {hasRewardToClaim
+              ? loadingId === nextReward?.id
+                ? "Claiming..."
+                : `Claim ${nextReward?.title}`
+              : "No Rewards to Claim"}
+          </Button>
+        </div>
+
+        {/* 🔁 Play Again Button (user controls navigation) */}
+        <div className="mt-5 text-center">
           <Button
             onClick={() => router.push("/")}
             className="bg-gray-700 hover:bg-gray-600 px-6 py-3 text-white rounded-xl"

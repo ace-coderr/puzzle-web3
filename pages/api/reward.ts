@@ -1,100 +1,134 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
+import {
+  Connection,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+  Keypair,
+  SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
 
 const prisma = new PrismaClient();
+const connection = new Connection(process.env.RPC_URL!, "confirmed");
 
-// 🔹 Handle GET — fetch unclaimed rewards
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === "GET") {
-    const walletAddress = req.query.wallet as string;
+// 🪙 Load treasury wallet (server wallet)
+const secretKey = JSON.parse(process.env.SOLANA_SERVER_SECRET_KEY!);
+const serverWallet = Keypair.fromSecretKey(Uint8Array.from(secretKey));
 
-    if (!walletAddress) {
-      return res.status(400).json({ error: "Missing wallet address" });
-    }
+/**
+ * ✅ GET — Fetch all rewards for a user
+ * Example: /api/rewards?wallet=<walletAddress>
+ */
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const walletAddress = searchParams.get("wallet");
 
-    try {
-      const user = await prisma.user.findUnique({ where: { walletAddress } });
-      if (!user) return res.json({ rewards: [] });
-
-      const unclaimed = await prisma.gameResult.findMany({
-        where: { userId: user.id, won: true, claimed: false },
-        orderBy: { createdAt: "desc" },
-      });
-
-      const rewards = unclaimed.map((g) => ({
-        id: g.id,
-        title: "🎁 Win Reward",
-        description: `Won game with ${g.moves} moves`,
-        amount: Number(g.bidding) * 2,
-        claimed: g.claimed,
-      }));
-
-      return res.json({ rewards });
-    } catch (err) {
-      console.error("Error fetching rewards:", err);
-      return res.status(500).json({ error: "Internal server error" });
-    } finally {
-      await prisma.$disconnect();
-    }
+  if (!walletAddress) {
+    return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
   }
 
-  // 🔹 Handle POST — claim reward
-  else if (req.method === "POST") {
-    try {
-      const { walletAddress, rewardId, txSignature } = req.body;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { walletAddress },
+      include: { rewards: true },
+    });
 
-      if (!walletAddress || !rewardId) {
-        return res.status(400).json({ error: "Missing walletAddress or rewardId" });
-      }
-
-      const user = await prisma.user.findUnique({ where: { walletAddress } });
-      if (!user) return res.status(404).json({ error: "User not found" });
-
-      const game = await prisma.gameResult.findUnique({ where: { id: rewardId } });
-      if (!game || !game.won || game.claimed) {
-        return res.status(400).json({ error: "Invalid or already claimed reward" });
-      }
-
-      const rewardAmount = Number(game.bidding) * 2;
-
-      const updatedUser = await prisma.$transaction(async (tx) => {
-        const updated = await tx.user.update({
-          where: { id: user.id },
-          data: { balance: { increment: rewardAmount } },
-        });
-
-        await tx.gameResult.update({
-          where: { id: rewardId },
-          data: { claimed: true },
-        });
-
-        await tx.transaction.create({
-          data: {
-            amount: rewardAmount,
-            type: "WIN",
-            status: "SUCCESS",
-            txSignature: txSignature || null, // ✅ correct field name
-            userId: user.id,
-          },
-        });
-
-        return updated;
-      });
-
-      return res.json({
-        success: true,
-        newBalance: updatedUser.balance,
-      });
-    } catch (err) {
-      console.error("Reward claim failed:", err);
-      return res.status(500).json({ error: "Internal server error" });
-    } finally {
-      await prisma.$disconnect();
-    }
+    return NextResponse.json({ rewards: user?.rewards || [] }, { status: 200 });
+  } catch (err) {
+    console.error("❌ Error fetching rewards:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
+}
 
-  // 🔹 Fallback
-  else {
-    return res.status(405).json({ error: "Method not allowed" });
+/**
+ * ✅ POST — Claim a reward and send SOL to the user
+ * Body: { walletAddress, rewardId }
+ */
+export async function POST(req: Request) {
+  try {
+    const { walletAddress, rewardId } = await req.json();
+
+    if (!walletAddress || !rewardId) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    // 🔹 Verify user and reward
+    const user = await prisma.user.findUnique({ where: { walletAddress } });
+    const reward = await prisma.reward.findUnique({ where: { id: rewardId } });
+
+    if (!user || !reward) {
+      return NextResponse.json(
+        { error: "User or reward not found" },
+        { status: 404 }
+      );
+    }
+
+    if (reward.claimed) {
+      return NextResponse.json(
+        { error: "Reward already claimed" },
+        { status: 400 }
+      );
+    }
+
+    // 🟡 Send SOL from treasury wallet to player's wallet
+    const recipient = new PublicKey(walletAddress);
+    const lamports = Number(reward.amount) * LAMPORTS_PER_SOL;
+
+    const transaction = new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: serverWallet.publicKey,
+        toPubkey: recipient,
+        lamports,
+      })
+    );
+
+    const txSignature = await sendAndConfirmTransaction(
+      connection,
+      transaction,
+      [serverWallet]
+    );
+
+    console.log("✅ Reward transaction confirmed:", txSignature);
+
+    // 🟢 Perform database updates atomically
+    await prisma.$transaction([
+      prisma.reward.update({
+        where: { id: rewardId },
+        data: { claimed: true },
+      }),
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          balance: { increment: reward.amount },
+        },
+      }),
+      prisma.transaction.create({
+        data: {
+          amount: reward.amount,
+          type: "REWARD",
+          status: "SUCCESS",
+          userId: user.id,
+          txSignature,
+        },
+      }),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      message: "🎉 Reward claimed successfully!",
+      txSignature,
+    });
+  } catch (err) {
+    console.error("❌ Reward claim failed:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
   }
 }

@@ -7,6 +7,7 @@ type ModalProps = {
   onClose: () => void;
   onConfirm: () => void;
   confirmText: string;
+  children?: React.ReactNode;
 };
 
 export default function Modal({
@@ -16,32 +17,26 @@ export default function Modal({
   onClose,
   onConfirm,
   confirmText,
+  children,
 }: ModalProps) {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white text-gray-900 p-6 rounded-2xl shadow-xl max-w-sm w-[90%] relative animate-scale-in">
-        {/* Title */}
-        <h2 className="text-2xl font-bold mb-3 text-center">{title}</h2>
-
-        {/* Message */}
-        <p className="text-center whitespace-pre-line mb-6 text-gray-700">
-          {message}
-        </p>
-
-        {/* Buttons */}
-        <div className="flex justify-center gap-4">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60">
+      <div className="bg-gray-800 p-6 rounded-xl shadow-lg text-white text-center w-80">
+        <h2 className="text-xl font-bold mb-2">{title}</h2>
+        <p className="mb-4 whitespace-pre-line">{message}</p>
+        {children && <div className="mb-3">{children}</div>}
+        <div className="flex justify-center gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold transition"
+            className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg"
           >
             Close
           </button>
-
           <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition"
+            className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg"
           >
             {confirmText}
           </button>

@@ -15,6 +15,7 @@ model User {
   transactions  Transaction[]
   gameResults   GameResult[]
   bids          Bid[]
+  rewards        Reward[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -53,11 +54,23 @@ model Transaction {
   type         TransactionType
   status       TransactionStatus
   user         User              @relation(fields: [userId], references: [id])
+  
   userId       Int
   bid          Bid?              @relation(fields: [bidId], references: [id])
   bidId        Int?
   txSignature  String?
   createdAt    DateTime          @default(now())
+}
+
+model Reward {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  amount      Decimal  @db.Decimal(18, 8)  // consistent with other monetary fields
+  claimed     Boolean  @default(false)
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  createdAt   DateTime @default(now())
 }
 
 enum BidStatus {
@@ -72,6 +85,7 @@ enum TransactionType {
   BID
   WIN
   LOSE
+  REWARD
 }
 
 enum TransactionStatus {

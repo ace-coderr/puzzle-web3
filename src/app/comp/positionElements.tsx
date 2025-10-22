@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Modal from "./Modal";
+import { useRouter } from "next/navigation";
 
 export type Tile = {
     id: number;
@@ -71,6 +72,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const [resultSaved, setResultSaved] = useState<boolean>(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const [currentBid, setCurrentBid] = useState<number>(0);
+    const router = useRouter();
 
     // Generate puzzle tiles
     function generateTiles(imageUrl: string): Tile[] {
@@ -105,21 +107,31 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 setTimerActive(false);
                 setResultSaved(true);
 
-                await saveResult("WIN", { walletAddress, moves: moveCount, time, bidding: currentBid });
-
-                // 👇 Navigate to reward page after successful win save
-                window.location.href = "/reward";
+                // ✅ Just save the win — no navigation
+                await saveResult("WIN", {
+                    walletAddress,
+                    moves: moveCount,
+                    time,
+                    bidding: currentBid,
+                });
             } else if (moveCount >= 20 || time >= 60) {
                 setIsGameOver(true);
                 setTimerActive(false);
                 setResultSaved(true);
 
-                await saveResult("LOSE", { walletAddress, moves: moveCount, time, bidding: currentBid });
+                // ✅ Save the loss as before
+                await saveResult("LOSE", {
+                    walletAddress,
+                    moves: moveCount,
+                    time,
+                    bidding: currentBid,
+                });
             }
         };
 
         handleResult();
     }, [tiles, moveCount, time, walletAddress, resultSaved]);
+
 
     // Timer Logic
     useEffect(() => {
@@ -195,7 +207,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
 
     // --- RESTART ---
     const handleRestart = (newImage?: string) => {
-        const finalImage = newImage || imageUrl;
+        const finalImage = newImage || `https://picsum.photos/seed/${Math.floor(Math.random() * 1000000)}/800/480`;
         setImageUrl(finalImage);
         const newTiles = generateTiles(finalImage);
         setTiles(newTiles);
@@ -210,13 +222,19 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     // Listen for bid success event
     useEffect(() => {
         const handleBidRestart = (e: any) => {
-            const { imageUrl, walletAddress, amount } = e.detail || {};
+            const { walletAddress, amount } = e.detail || {};
             setWalletAddress(walletAddress);
             setCurrentBid(amount || 0);
-            handleRestart(imageUrl);
+
+            // ✅ Always generate a new random image on successful bid
+            const randomSeed = Math.floor(Math.random() * 1000000);
+            const randomImageUrl = `https://picsum.photos/seed/${randomSeed}/800/480`;
+
+            handleRestart(randomImageUrl);
             setTimerActive(true);
             setTime(0);
         };
+
         document.addEventListener("puzzle-restart", handleBidRestart);
         return () => document.removeEventListener("puzzle-restart", handleBidRestart);
     }, []);
@@ -314,27 +332,21 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     show={isWin}
                     onClose={() => {
                         setIsWin(false);
-                        handleRestart(); // just restart puzzle
+                        handleRestart();
                     }}
                     onConfirm={handleRestart}
                     confirmText="Play Again"
-                />
-
-                {/* 💀 GAME OVER MODAL */}
-                <Modal
-                    title="💀 Game Over 💀"
-                    message={`You took too long or used too many moves.\nMoves: ${moveCount}, Time: ${time}s`}
-                    show={isGameOver}
-                    onClose={() => {
-                        setIsGameOver(false);
-                        onRetry?.(); // ✅ instead of handleRestart()
-                    }}
-                    onConfirm={() => {
-                        setIsGameOver(false);
-                        onRetry?.(); // ✅ show bid screen again
-                    }}
-                    confirmText="Retry"
-                />
+                >
+                    {/* 👇 Add manual navigation to Reward Page */}
+                    <div className="mt-4 flex justify-center">
+                        <button
+                            onClick={() => router.push("/reward")}
+                            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition"
+                        >
+                            🎁 Claim Reward
+                        </button>
+                    </div>
+                </Modal>
 
             </div>
         </>

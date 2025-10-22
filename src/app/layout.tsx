@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-black`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased text-black`}
       >
         {/* App-wide Solana wallet context */}
         <AppWalletProvider>
