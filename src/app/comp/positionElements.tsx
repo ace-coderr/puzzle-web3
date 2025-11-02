@@ -15,7 +15,7 @@ export type Tile = {
 // Save to backend
 async function saveResult(
     result: "WIN" | "LOSE",
-    opts: { walletAddress?: string; moves: number; time: number; bidding: number }
+    opts: { walletAddress?: string; moves: number; time: number; bidding: number; reward?: number }
 ) {
     if (!opts.walletAddress) {
         console.log("🕹️ Demo mode: result not recorded.");
@@ -73,6 +73,8 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [currentBid, setCurrentBid] = useState<number>(0);
     const router = useRouter();
+    const [bidStarted, setBidStarted] = useState(false);
+    const rewardAmount = currentBid * 2;
 
     // Generate puzzle tiles
     function generateTiles(imageUrl: string): Tile[] {
@@ -107,25 +109,48 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 setTimerActive(false);
                 setResultSaved(true);
 
-                // ✅ Just save the win — no navigation
+                const rewardAmount = currentBid * 2; // 💰 Double the user's bid
+
+                // Save game result
                 await saveResult("WIN", {
                     walletAddress,
                     moves: moveCount,
                     time,
                     bidding: currentBid,
+                    reward: rewardAmount,
                 });
+
+                // 🔹 Create reward entry in backend
+                try {
+                    await fetch("/api/rewards", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            walletAddress,
+                            title: "Puzzle Win Reward",
+                            description: `You solved the puzzle in ${moveCount} moves!`,
+                            amount: rewardAmount,
+                        }),
+                    });
+                    console.log("✅ Reward successfully sent to backend");
+                } catch (error) {
+                    console.error("❌ Error creating reward:", error);
+                }
+
+                setBidStarted(false); // 👈 show buttons again after win
             } else if (moveCount >= 20 || time >= 60) {
                 setIsGameOver(true);
                 setTimerActive(false);
                 setResultSaved(true);
 
-                // ✅ Save the loss as before
                 await saveResult("LOSE", {
                     walletAddress,
                     moves: moveCount,
                     time,
                     bidding: currentBid,
                 });
+
+                setBidStarted(false); // 👈 show buttons again after loss
             }
         };
 
@@ -150,7 +175,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
 
         return () => clearInterval(interval);
     }, [timerActive])
-
 
     // Image Handlers
     const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,7 +243,21 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         setResultSaved(false)
     };
 
-    // Listen for bid success event
+    const handleResetToDefault = () => {
+        setImageUrl("./images/wall.jpg");
+        const newTiles = generateTiles("./images/wall.jpg");
+        setTiles(newTiles);
+        setMoveCount(0);
+        setIsGameOver(false);
+        setIsWin(false);
+        setTime(0);
+        setTimerActive(false);
+        setResultSaved(false);
+        setBidStarted(false); // 👈 show buttons again
+    };
+
+
+    // ✅ Listen for bid success event
     useEffect(() => {
         const handleBidRestart = (e: any) => {
             const { walletAddress, amount } = e.detail || {};
@@ -233,6 +271,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             handleRestart(randomImageUrl);
             setTimerActive(true);
             setTime(0);
+            setBidStarted(true);
         };
 
         document.addEventListener("puzzle-restart", handleBidRestart);
@@ -262,6 +301,10 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 </div>
             )}
 
+            <div className="flex justify-center gap-10 mt-4 text-xl font-semibold text-white time-count">
+                <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow">Moves: {moveCount} / 20</p>
+                <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow">Time: {time}s / 60s</p>
+            </div>
 
             {imageUrl && (
                 <div className="relative w-[40vw] h-[24vw] overflow-hidden stylle">
@@ -298,32 +341,36 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                         className="w-[20vw] h-auto border rounded shadow"
                     />
                 </div>
-                <div className="flex gap-4">
-                    <button
-                        onClick={handleRandomImage}
-                        className=" bg-gray-900 hover:bg-gray-400 transition random-btn"
-                    >
-                        Random Image
-                    </button>
 
-                    <button onClick={() => inputRef.current?.click()}
-                        className="bg-gray-900 hover:bg-gray-400 transition random-btn"
+                {/* ✅ Show image buttons only if bid not started */}
+                {!bidStarted && (
+                    <div
+                        className="flex gap-4 transition-opacity duration-500 ran-upl"
+                        style={{ opacity: bidStarted ? 0 : 1 }}
                     >
-                        Upload Image
-                    </button>
-                    <input
-                        ref={inputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleUpload}
-                        className="hidden"
-                    />
-                </div>
+                        <button
+                            onClick={handleRandomImage}
+                            className="bg-gray-900 hover:bg-gray-400 transition random-btn"
+                        >
+                            Random Image
+                        </button>
 
-                <div className="mt-4 text-center">
-                    <p className="text-xl">Moves: {moveCount} / 20</p>
-                    <p className="text-xl">Time: {time}s / 60s</p>
-                </div>
+                        <button
+                            onClick={() => inputRef.current?.click()}
+                            className="bg-gray-900 hover:bg-gray-400 transition random-btn"
+                        >
+                            Upload Image
+                        </button>
+
+                        <input
+                            ref={inputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleUpload}
+                            className="hidden"
+                        />
+                    </div>
+                )}
 
                 {/* ✅ WIN MODAL */}
                 <Modal
@@ -332,19 +379,36 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     show={isWin}
                     onClose={() => {
                         setIsWin(false);
-                        handleRestart();
+                        handleResetToDefault();
                     }}
-                    onConfirm={handleRestart}
-                    confirmText="Play Again"
+                    onConfirm={() => {
+                        // Redirect to reward page — user can claim from there
+                        router.push(`/reward?amount=${rewardAmount}`);
+                    }}
+                    confirmText="View Reward"
                 >
-                    {/* 👇 Add manual navigation to Reward Page */}
-                    <div className="mt-4 flex justify-center">
-                        <button
-                            onClick={() => router.push("/reward")}
-                            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg transition"
-                        >
-                            🎁 Claim Reward
-                        </button>
+                    <div className="mt-4 flex flex-col items-center gap-2">
+                        <p className="text-lg font-semibold text-gray-300">
+                            💎 Reward: {rewardAmount > 0 ? `${rewardAmount} SOL` : "—"}
+                        </p>
+
+                        {/* 👇 Removed claim button — user claims later on reward page */}
+                    </div>
+                </Modal>
+
+                {/* 💀 GAME OVER MODAL */}
+                <Modal
+                    title="😢 Game Over"
+                    message="You ran out of moves or time. Try again!"
+                    show={isGameOver && !isWin}
+                    onClose={() => {
+                        setIsGameOver(false);
+                        handleResetToDefault();
+                    }}
+                    singleButton={true}
+                >
+                    <div className="mt-4 text-center text-gray-300">
+                        💡 Hint: Focus on edge tiles first!
                     </div>
                 </Modal>
 

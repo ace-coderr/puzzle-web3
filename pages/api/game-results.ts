@@ -1,5 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { PrismaClient, TransactionType, TransactionStatus, BidStatus } from "@prisma/client";
+import {
+    PrismaClient,
+    TransactionType,
+    TransactionStatus,
+    BidStatus,
+} from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
 const prisma = new PrismaClient();
@@ -20,26 +25,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const resultData = await prisma.$transaction(async (tx) => {
-            // 1. Find the user
+            // 1️⃣ Find the user
             const user = await tx.user.findUnique({ where: { walletAddress } });
             if (!user) {
                 throw new Error("User not found. You must place a bid first.");
             }
 
-            // 2. Find the existing gameResult stub created in /api/bids
+            // 2️⃣ Find the existing gameResult stub created in /api/bids
             const existingGame = await tx.gameResult.findUnique({ where: { gameId } });
             if (!existingGame) {
                 throw new Error("Game result not found. You must place a bid first.");
             }
 
-            // 3. Ensure it hasn't already been finalized
+            // 3️⃣ Ensure it hasn't already been finalized
             if (existingGame.score > 0 || existingGame.moves > 0) {
                 throw new Error("Game result already finalized.");
             }
 
             const didWin = won === true || won === "WIN";
 
-            // 4. Update the gameResult with actual play data
+            // 4️⃣ Update the gameResult with actual play data
             const result = await tx.gameResult.update({
                 where: { id: existingGame.id },
                 data: {
@@ -49,28 +54,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 },
             });
 
-            // 5. Update the bid status from PENDING → SUCCESS
+            // 5️⃣ Update the bid status from PENDING → SUCCESS
             await tx.bid.update({
                 where: { gameResultId: existingGame.id },
                 data: { status: BidStatus.SUCCESS },
             });
 
-            // 6. Handle win/loss
+            // 6️⃣ Handle win/loss logic
             if (didWin) {
+                const bidAmount = new Decimal(existingGame.bidding);
+                const rewardAmount = bidAmount.mul(2); // 🟢 DOUBLE the bid for reward
+
+                // Update user balance
                 await tx.user.update({
                     where: { id: user.id },
-                    data: { balance: { increment: new Decimal(existingGame.bidding).mul(2) } },
+                    data: { balance: { increment: rewardAmount } },
                 });
 
+                // Log WIN transaction
                 await tx.transaction.create({
                     data: {
-                        amount: new Decimal(existingGame.bidding),
+                        amount: bidAmount,
                         type: TransactionType.WIN,
                         status: TransactionStatus.SUCCESS,
                         userId: user.id,
                     },
                 });
+
+                // 🟢 NEW: Create a Reward entry for claiming later
+                await tx.reward.create({
+                    data: {
+                        title: "Puzzle Victory Reward 🎉",
+                        description: `You won your puzzle match! You earned ${rewardAmount.toString()} SOL.`,
+                        amount: rewardAmount,
+                        user: { connect: { id: user.id } },
+                    },
+                });
+
             } else {
+                // LOSS case
                 await tx.transaction.create({
                     data: {
                         amount: new Decimal(existingGame.bidding),
@@ -99,7 +121,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             balance: resultData.balance,
             customId: resultData.customId,
         });
-
     } catch (error: any) {
         console.error("❌ Finalize Game Error:", error);
 
@@ -112,5 +133,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         return res.status(500).json({ error: "Internal server error" });
+    } finally {
+        await prisma.$disconnect();
     }
 }
