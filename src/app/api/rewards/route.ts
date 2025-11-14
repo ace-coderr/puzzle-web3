@@ -1,122 +1,88 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import {
-    Connection,
-    PublicKey,
-    SystemProgram,
-    Transaction,
-    Keypair,
-    sendAndConfirmTransaction,
-} from "@solana/web3.js";
+import { prisma } from "@/lib/prisma";
+import { getConnection, getServerWallet } from "@/lib/solana";
+import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 
-const prisma = new PrismaClient();
+const connection = getConnection();
+const serverWallet = getServerWallet();
 
-const RPC_URL = process.env.SOLANA_RPC || "https://api.devnet.solana.com";
-const TREASURY_PRIVATE_KEY = process.env.TREASURY_PRIVATE_KEY!;
-const connection = new Connection(RPC_URL, "confirmed");
-
-function getTreasuryKeypair() {
-    const secret = Uint8Array.from(JSON.parse(TREASURY_PRIVATE_KEY));
-    return Keypair.fromSecretKey(secret);
-}
-
-// 🔹 GET — Fetch pending 2× reward
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
-        const walletAddress = searchParams.get("wallet");
-        if (!walletAddress)
-            return NextResponse.json({ error: "Missing wallet address" }, { status: 400 });
+        const walletAddress = searchParams.get("walletAddress");
+        if (!walletAddress) return NextResponse.json({ error: "Missing wallet" }, { status: 400 });
 
-        const game = await prisma.gameResult.findFirst({
-            where: { user: { walletAddress }, won: true, claimed: false },
-            include: { user: true },
-            orderBy: { createdAt: "desc" },
+        const user = await prisma.user.findUnique({
+            where: { walletAddress },
+            include: {
+                rewards: {
+                    where: { claimed: false },
+                    orderBy: { createdAt: "desc" },
+                },
+            },
         });
 
-        if (!game) return NextResponse.json({ rewards: [] }, { status: 200 });
-
-        const rewardAmount = Number(game.bidding) * 2;
-
-        const reward = {
-            id: game.id,
-            title: "Game Win Reward",
-            description: `2× your bid for winning Game ${game.gameId}`,
-            amount: rewardAmount,
-            claimed: false,
-        };
-
-        return NextResponse.json({ rewards: [reward] });
-    } catch (err: any) {
-        console.error("❌ GET /api/rewards error:", err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ rewards: user?.rewards || [] });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-// 🔹 POST — Claim reward (sends SOL)
 export async function POST(req: Request) {
     try {
-        const { walletAddress } = await req.json();
-        if (!walletAddress)
-            return NextResponse.json({ error: "Missing walletAddress" }, { status: 400 });
+        const { rewardId, walletAddress } = await req.json();
+        if (!rewardId || !walletAddress) throw new Error("Missing data");
 
-        const game = await prisma.gameResult.findFirst({
-            where: { user: { walletAddress }, won: true, claimed: false },
-            include: { user: true },
-            orderBy: { createdAt: "desc" },
-        });
+        const result = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.findUnique({ where: { walletAddress } });
+            if (!user) throw new Error("User not found");
 
-        if (!game)
-            return NextResponse.json({ error: "No unclaimed rewards" }, { status: 404 });
+            const reward = await tx.reward.findUnique({ where: { id: rewardId } });
+            if (!reward) throw new Error("Reward not found");
+            if (reward.claimed) throw new Error("Already claimed");
 
-        const rewardAmount = Number(game.bidding) * 2;
-        const lamports = rewardAmount * 1e9;
+            const amount = parseFloat(reward.amount.toString());
+            const lamports = amount * 1e9;
 
-        const treasury = getTreasuryKeypair();
-        const toPubkey = new PublicKey(walletAddress);
-
-        const tx = new Transaction().add(
-            SystemProgram.transfer({
-                fromPubkey: treasury.publicKey,
+            // === Transfer from server wallet ===
+            const toPubkey = new PublicKey(walletAddress);
+            const transferIx = SystemProgram.transfer({
+                fromPubkey: serverWallet.publicKey,
                 toPubkey,
                 lamports,
-            })
-        );
+            });
 
-        const signature = await sendAndConfirmTransaction(connection, tx, [treasury]);
+            const { blockhash } = await connection.getLatestBlockhash();
+            const transaction = new Transaction().add(transferIx);
+            transaction.recentBlockhash = blockhash;
+            transaction.feePayer = serverWallet.publicKey;
 
-        await prisma.$transaction([
-            prisma.gameResult.update({
-                where: { id: game.id },
+            const signature = await connection.sendTransaction(transaction, [serverWallet]);
+            await connection.confirmTransaction(signature);
+
+            // === Mark claimed ===
+            await tx.reward.update({
+                where: { id: rewardId },
                 data: { claimed: true },
-            }),
-            prisma.reward.create({
+            });
+
+            // === Record payout ===
+            await tx.transaction.create({
                 data: {
-                    title: "Game Win Reward",
-                    description: `2× reward for Game ${game.gameId}`,
-                    amount: rewardAmount,
-                    claimed: true,
-                    userId: game.user.id,
-                },
-            }),
-            prisma.transaction.create({
-                data: {
-                    userId: game.user.id,
-                    amount: rewardAmount,
+                    userId: user.id,
+                    amount: reward.amount,
                     type: "REWARD",
                     status: "SUCCESS",
                     txSignature: signature,
                 },
-            }),
-        ]);
+            });
 
-        return NextResponse.json({
-            success: true,
-            txSignature: signature,
-            message: `2× reward (${rewardAmount} SOL) sent to wallet.`,
+            return { txSignature: signature };
         });
-    } catch (err: any) {
-        console.error("❌ POST /api/rewards error:", err);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+
+        return NextResponse.json(result);
+    } catch (error: any) {
+        console.error("Claim error:", error);
+        return NextResponse.json({ error: error.message }, { status: 400 });
     }
 }

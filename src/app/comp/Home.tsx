@@ -5,8 +5,8 @@ import { useWallet } from "@solana/wallet-adapter-react";
 // @ts-ignore
 import "./css/style.css";
 import { PositionElements } from "./positionElements";
-import BidComponent from "./bid";
-import RecentActivity from "./recentActivity";
+import BidComponent from "./bids";
+import RecentActivity from "./recentBids";
 
 export default function HomeComponent() {
   const wallet = useWallet();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import BidComponent from "./bid";
+import BidComponent from "./bids";
 import { PositionElements } from "./positionElements";
 
 export default function GamePage({ wallet }: { wallet: any }) {

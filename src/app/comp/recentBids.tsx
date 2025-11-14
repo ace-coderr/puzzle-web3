@@ -7,7 +7,7 @@ export default function RecentActivity() {
 
     const fetchRecentBids = async () => {
         try {
-            const res = await fetch("/api/bid");
+            const res = await fetch("/api/recent-bids");
             if (!res.ok) throw new Error("Failed to fetch bids");
             const data = await res.json();
             setBids(data);
