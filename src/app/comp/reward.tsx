@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
+import Modal from "./Modal";
 
 type Reward = {
   id: string;
@@ -57,14 +57,12 @@ export default function RewardPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      // Show success modal (no alert!)
       setModal({
         open: true,
         amount: data.amount,
         tx: data.txSignature,
       });
 
-      // Remove claimed reward
       setRewards((prev) => prev.filter((r) => r.id !== reward.id));
     } catch (err: any) {
       alert(`Claim failed: ${err.message}`);
@@ -136,45 +134,25 @@ export default function RewardPage() {
         </div>
       </div>
 
-      {/* SUCCESS MODAL */}
-      <AnimatePresence>
-        {modal.open && (
-          <motion.div
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-gray-900 rounded-2xl p-8 text-center shadow-2xl border border-gray-700 w-[90%] max-w-md"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
-            >
-              <div className="bg-green-600 w-14 h-14 flex items-center justify-center rounded-full mx-auto mb-4">
-                Checkmark
-              </div>
-              <h2 className="text-2xl font-bold mb-3 text-green-400">Reward Claimed!</h2>
-              <p className="text-4xl font-bold text-white mb-2">{modal.amount} SOL</p>
-              <p className="text-xs text-gray-400 mb-3 break-all">{modal.tx}</p>
-              <a
-                href={`https://explorer.solana.com/tx/${modal.tx}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 underline text-sm hover:text-blue-300"
-              >
-                View on Solana Explorer
-              </a>
-              <Button
-                onClick={() => setModal({ open: false })}
-                className="mt-6 bg-blue-600 hover:bg-blue-700 w-full text-white py-2 rounded-xl"
-              >
-                Close
-              </Button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* REUSABLE MODAL — NO DUPLICATE */}
+      <Modal
+        title="Reward Claimed!"
+        show={modal.open}
+        onClose={() => setModal({ open: false })}
+        singleButton={true}
+        variant="success"
+      >
+        <p className="text-3xl font-bold text-white mb-2">{modal.amount} SOL</p>
+        <p className="text-xs text-gray-400 break-all mb-3">{modal.tx}</p>
+        <a
+          href={`https://explorer.solana.com/tx/${modal.tx}?cluster=devnet`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 underline text-sm hover:text-blue-300"
+        >
+          View on Solana Explorer
+        </a>
+      </Modal>
     </main>
   );
 }

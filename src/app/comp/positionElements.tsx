@@ -13,7 +13,9 @@ export type Tile = {
     bgY: number;
 };
 
-// Save to backend
+/* -------------------------------------------------------------
+   SAVE RESULT
+   ------------------------------------------------------------- */
 async function saveResult(
     result: "WIN" | "LOSE",
     opts: { walletAddress?: string; moves: number; time: number; bidding: number; reward?: number }
@@ -43,7 +45,7 @@ async function saveResult(
             }),
         });
 
-        const text = await res.text(); // ← Get raw text first
+        const text = await res.text();
         console.log("Raw /api/game-results response:", text);
 
         if (!res.ok) {
@@ -65,7 +67,9 @@ async function saveResult(
     }
 }
 
-// shuffle helper
+/* -------------------------------------------------------------
+   SHUFFLE HELPER
+   ------------------------------------------------------------- */
 function shuffleArray<T>(array: T[]): T[] {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -75,8 +79,14 @@ function shuffleArray<T>(array: T[]): T[] {
     return arr;
 }
 
+/* -------------------------------------------------------------
+   MAIN COMPONENT
+   ------------------------------------------------------------- */
 export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const { publicKey, connected } = useWallet();
+    const router = useRouter();
+
+    /* ---------- State ---------- */
     const [imageUrl, setImageUrl] = useState<string>("/images/wall.jpg")
     const [tiles, setTiles] = useState<Tile[]>([])
     const [draggedTile, setDraggedTile] = useState<Tile | null>(null)
@@ -91,11 +101,10 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const [resultSaved, setResultSaved] = useState<boolean>(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const [currentBid, setCurrentBid] = useState<number>(0);
+    const [showStartModal, setShowStartModal] = useState(false);
     const [bidStarted, setBidStarted] = useState(false);
-    const [showRewardModal, setShowRewardModal] = useState(false);
-    const router = useRouter();
 
-    // Difficulty
+    /* ---------- Difficulty ---------- */
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
     const [maxMoves, setMaxMoves] = useState(30);
     const [maxTime, setMaxTime] = useState(90);
@@ -112,7 +121,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         setMaxTime(d.time);
     }, [difficulty]);
 
-    // Generate puzzle tiles
+    /* ---------- Tile generation ---------- */
     function generateTiles(imageUrl: string): Tile[] {
         const leftPositions = [0, 8, 16, 24, 32];
         const topPositions = [0, 6, 12, 18];
@@ -132,13 +141,15 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         });
     }
 
-    // ✅ Initialize default puzzle on mount
+
+    /* ---------- Init default puzzle ---------- */
     useEffect(() => {
         const defaultImage = "/images/wall.jpg";
         setTiles(generateTiles(defaultImage));
     }, []);
 
-    // ✅ Check for win or loss
+
+    /* ---------- Win / Lose detection ---------- */
     useEffect(() => {
         if (tiles.length === 0 || resultSaved) return;
         const hasWon = tiles.every((tile) => tile.x === tile.bgX && tile.y === tile.bgY);
@@ -156,7 +167,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     reward: currentBid * 2,
                 });
                 setBidStarted(false);
-                setShowRewardModal(true);
             } else if (moveCount >= maxMoves || time >= maxTime) {
                 setIsGameOver(true);
                 setTimerActive(false);
@@ -174,7 +184,8 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         handleResult();
     }, [tiles, moveCount, time, publicKey, resultSaved, maxMoves, maxTime, currentBid]);
 
-    // Timer Logic
+
+    /* ---------- Timer ---------- */
     useEffect(() => {
         if (!timerActive) return;
 
@@ -191,7 +202,8 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         return () => clearInterval(interval);
     }, [timerActive, maxTime]);
 
-    // Image Handlers
+
+    /* ---------- Image helpers ---------- */
     const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
@@ -199,14 +211,13 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             setImageUrl(url)
         }
     };
-
     const handleRandomImage = () => {
         const seed = Math.floor(Math.random() * 1000)
         const url = `https://picsum.photos/seed/${seed}/800/480`
         setImageUrl(url)
     };
 
-    // --- TILE DRAG/DROP ---
+    /* ---------- Tile Drag/Drop ---------- */
     const handleDragStart = (tile: Tile) => setDraggedTile(tile);
     const handleDragOver = (e: React.DragEvent, tile: Tile) => {
         e.preventDefault();
@@ -243,8 +254,8 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     }
 
 
-    // --- RESTART / RESET ---
-    const handleRestart = (newImage?: string) => {
+    /* ---------- Restart / Reset ---------- */
+    const handleRestart = (newImage?: string, startTimer = true) => {
         const finalImage = newImage || "/images/wall.jpg";
         setImageUrl(finalImage);
         const newTiles = generateTiles(finalImage);
@@ -253,17 +264,22 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         setIsGameOver(false);
         setIsWin(false);
         setTime(0);
-        setTimerActive(false);
+        setTimerActive(startTimer);
         setResultSaved(false);
-        setDifficulty('medium');
+        setShowStartModal(false);
     };
-
     const handleResetToDefault = () => {
         handleRestart("/images/wall.jpg");
         setBidStarted(false);
     };
+    const handleStartGame = () => {
+        setShowStartModal(false);
+        setTimerActive(true);
+        setTime(0);
+    };
 
-    // ✅ Listen for bid success event
+
+    /* ---------- Bid-success listener ---------- */
     useEffect(() => {
         const handleBidRestart = (e: any) => {
             const { walletAddress, amount, gameId } = e.detail || {};
@@ -275,19 +291,24 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             setCurrentBid(amount || 0);
             const randomSeed = Math.floor(Math.random() * 1000000);
             const randomImageUrl = `https://picsum.photos/seed/${randomSeed}/800/480`;
-            handleRestart(randomImageUrl);
-            setTimerActive(true);
+            handleRestart(randomImageUrl, false);
+            setTimerActive(false);
             setTime(0);
             setBidStarted(true);
+            setShowStartModal(true);
         };
         document.addEventListener("puzzle-restart", handleBidRestart);
         return () => document.removeEventListener("puzzle-restart", handleBidRestart);
     }, []);
 
 
-    // RENDER
+
+    /* -------------------------------------------------------------
+     RENDER
+     ------------------------------------------------------------- */
     return (
         <>
+            {/* ----- Welcome screen ----- */}
             {showStartPage && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-black/40">
                     <div className="bg-white start1 bg-opacity-80 p-8 rounded shadow-lg text-center max-w-sm">
@@ -303,7 +324,8 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 </div>
             )}
 
-            {/* Difficulty Buttons */}
+
+            {/* ----- Difficulty picker (only when wallet connected) ----- */}
             {connected && (
                 <div className="flex justify-center gap-3 mt-4 mb-2">
                     {difficulties.map(d => (
@@ -321,48 +343,50 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 </div>
             )}
 
+
+            {/* ----- Counters ----- */}
             <div className="flex justify-center gap-10 mt-4 text-xl font-semibold text-white time-count">
                 <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow">Moves: {moveCount} / {maxMoves}</p>
                 <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow">Time: {time}s / {maxTime}s</p>
             </div>
 
-            {imageUrl && (
-                <div className="relative w-[40vw] h-[24vw] overflow-hidden stylle">
-                    {tiles.map((tile) => (
-                        <div
-                            key={tile.id}
-                            className="absolute w-[8vw] h-[6vw] box-border"
-                            draggable
-                            onDragStart={() => handleDragStart(tile)}
-                            onDragOver={(e) => handleDragOver(e, tile)}
-                            onDrop={(e) => handleDrop(e, tile)}
-                            onDragEnd={handleDragEnd}
-                            style={{
-                                left: `${tile.x}vw`,
-                                top: `${tile.y}vw`,
-                                backgroundImage: `url(${imageUrl})`,
-                                backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
-                                backgroundSize: `40vw 24vw`,
-                                backgroundRepeat: 'no-repeat',
-                                border: hoveredTile?.id === tile.id ? '2px dashed red' : 'none',
-                                opacity: draggedTile?.id === tile.id ? 0.5 : 1
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
+            {/* ----- Puzzle board ----- */}
+            {/* {imageUrl && ( */}
+            <div className="relative w-[40vw] h-[24vw] overflow-hidden stylle">
+                {tiles.map((tile) => (
+                    <div
+                        key={tile.id}
+                        className="absolute w-[8vw] h-[6vw] box-border"
+                        draggable
+                        onDragStart={() => handleDragStart(tile)}
+                        onDragOver={(e) => handleDragOver(e, tile)}
+                        onDrop={(e) => handleDrop(e, tile)}
+                        onDragEnd={handleDragEnd}
+                        style={{
+                            left: `${tile.x}vw`,
+                            top: `${tile.y}vw`,
+                            backgroundImage: `url(${imageUrl})`,
+                            backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
+                            backgroundSize: `40vw 24vw`,
+                            backgroundRepeat: 'no-repeat',
+                            border: hoveredTile?.id === tile.id ? '2px dashed red' : 'none',
+                            opacity: draggedTile?.id === tile.id ? 0.5 : 1
+                        }}
+                    />
+                ))}
+            </div>
+            {/* )} */}
 
+
+            {/* ----- Original image + image controls ----- */}
             <div className="flex flex-col items-center gap-4 p-4">
                 <div>
                     <br />
-                    <img
-                        src={imageUrl}
-                        alt="Original"
-                        className="w-[20vw] h-auto border rounded shadow"
-                    />
+                    <img src={imageUrl} alt="Original" className="w-[20vw] h-auto border rounded shadow" />
                 </div>
 
-                {/* ✅ Show image buttons only if bid not started */}
+
+                {/* Image controls only before a bid */}
                 {!bidStarted && (
                     <div className="flex gap-4 transition-opacity duration-500 ran-upl" style={{ opacity: bidStarted ? 0 : 1 }}>
                         <button onClick={handleRandomImage} className="bg-gray-900 hover:bg-gray-400 transition random-btn">
@@ -375,38 +399,38 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     </div>
                 )}
 
-                {/* Show modal */}
+                {/* ---------- MODALS (single reusable component) ---------- */}
+
+                {/* Bid-confirmation → Start */}
                 <Modal
-                    title="You Win!"
-                    message={`You solved it in ${moveCount} moves and ${time}s.\n\nReward: ${currentBid * 2} SOL`}
-                    show={isWin || showRewardModal}
-                    onClose={() => {
-                        setIsWin(false);
-                        setShowRewardModal(false);
-                        handleResetToDefault();
-                    }}
-                    onConfirm={() => {
-                        router.push("/reward");
-                    }}
+                    title="Bid Confirmed!"
+                    message={`Your ${currentBid} SOL bid is locked.\nReady to play?`}
+                    show={showStartModal}
+                    onConfirm={handleStartGame}
+                    confirmText="Start Game"
+                    variant="start" onClose={function (): void {
+                        throw new Error("Function not implemented.");
+                    }} />
+
+                {/* Victory */}
+                <Modal
+                    title="Puzzle Victory"
+                    message={`Won in ${moveCount} moves, ${time}s`}
+                    show={isWin}
+                    onClose={() => { setIsWin(false); handleResetToDefault(); }}
+                    onConfirm={() => router.push("/reward")}
                     confirmText="Claim Reward"
-                    singleButton={!currentBid}
+                    variant="success"
                 >
-                    {currentBid > 0 && (
-                        <div className="mt-4 p-4 bg-green-900/50 rounded-lg">
-                            <p className="text-2xl font-bold text-green-400">{currentBid * 2} SOL</p>
-                            <p className="text-sm text-gray-300">Ready to claim!</p>
-                        </div>
-                    )}
+                    <p className="text-2xl font-bold text-green-400">{currentBid * 2} SOL</p>
                 </Modal>
 
+                {/* Game Over */}
                 <Modal
                     title="Game Over"
-                    message="You ran out of moves or time. Try again!"
-                    show={isGameOver && !isWin}
-                    onClose={() => {
-                        setIsGameOver(false);
-                        handleResetToDefault();
-                    }}
+                    message="Out of moves or time!"
+                    show={isGameOver}
+                    onClose={() => { setIsGameOver(false); handleResetToDefault(); }}
                     singleButton={true}
                 />
             </div>
