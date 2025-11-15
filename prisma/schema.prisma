@@ -23,31 +23,33 @@ model User {
 }
 
 model GameResult {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id])
+  gameId    String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id])
   userId    Int
-  gameId    String
-  score     Int      @default(0)
-  moves     Int      @default(0)
-  won       Boolean  @default(false)
-  bidding   Decimal  @default(0) @db.Decimal(18, 8)
-  claimed   Boolean  @default(false)
-  createdAt DateTime @default(now())
+
+  score     Int       @default(0)
+  moves     Int       @default(0)
+  won       Boolean   @default(false)
+  bidding   Decimal   @default(0) @db.Decimal(18, 8)
+  claimed   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
   bid       Bid?
-  
-  @@index([gameId])
+
+  @@index([userId])
 }
 
 model Bid {
-  id           Int           @id @default(autoincrement())
-  amount       Decimal       @db.Decimal(18, 8)
-  status       BidStatus     @default(PENDING)
-  user         User          @relation(fields: [userId], references: [id])
-  userId       Int
-  gameResult   GameResult    @relation(fields: [gameResultId], references: [id])
-  gameResultId String        @unique
-  transactions Transaction[]
-  createdAt    DateTime      @default(now())
+  id            Int       @id @default(autoincrement())
+  amount        Decimal   @db.Decimal(18, 8)
+  status        BidStatus @default(PENDING)
+  user          User      @relation(fields: [userId], references: [id])
+  userId        Int
+  gameResult    GameResult @relation(fields: [gameResultId], references: [gameId])
+  gameResultId  String    @unique
+
+  transactions  Transaction[]
+  createdAt     DateTime  @default(now())
 }
 
 model Transaction {

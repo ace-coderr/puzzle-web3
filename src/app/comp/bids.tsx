@@ -57,10 +57,11 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
 
       console.log("SOL sent to treasury:", txSignature);
 
-      // Generate gameId
-      const gameId = "puzzle-" + Date.now();
+      // === GENERATE + SAVE gameId ===
+      const gameId = `puzzle-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      localStorage.setItem("currentGameId", gameId); // ← CRITICAL
 
-      // Save to backend
+      // === Save bid to backend ===
       const res = await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,21 +76,17 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save bid.");
 
-      // Update balance
+      // === Update balance ===
       if (onBalanceUpdate) {
         const newBalance = await connection.getBalance(wallet.publicKey);
         onBalanceUpdate(newBalance / LAMPORTS_PER_SOL);
       }
 
-      // Emit events
+      // === Notify puzzle to restart ===
       document.dispatchEvent(new Event("recent-activity-refresh"));
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
-          detail: {
-            walletAddress: wallet.publicKey.toString(),
-            amount,
-            gameId,
-          },
+          detail: { walletAddress: wallet.publicKey.toString(), amount, gameId },
         })
       );
 
@@ -111,8 +108,8 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
             key={opt}
             onClick={() => setAmount(opt)}
             className={`px-4 py-2 rounded-lg border ${amount === opt
-                ? "bg-blue-600 border-blue-400"
-                : "bg-gray-700 hover:bg-gray-600 border-gray-600"
+              ? "bg-blue-600 border-blue-400"
+              : "bg-gray-700 hover:bg-gray-600 border-gray-600"
               }`}
           >
             {opt} SOL

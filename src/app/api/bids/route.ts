@@ -4,64 +4,70 @@ import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export async function POST(req: Request) {
-    try {
-        const { walletAddress, gameId, amount, txSignature } = await req.json();
+  try {
+    const { walletAddress, gameId, amount, txSignature } = await req.json();
 
-        if (!walletAddress || !amount || !gameId || !txSignature) {
-            return NextResponse.json(
-                { error: "walletAddress, amount, gameId, and txSignature are required" },
-                { status: 400 }
-            );
-        }
-
-        const user = await prisma.user.upsert({
-            where: { walletAddress },
-            update: {},
-            create: { walletAddress },
-        });
-
-        const bidAmount = new Decimal(amount);
-
-        const result = await prisma.$transaction(async (tx) => {
-            const gameResult = await tx.gameResult.create({
-                data: {
-                    gameId,
-                    userId: user.id,
-                    bidding: bidAmount,
-                    won: false,
-                },
-            });
-
-            const bid = await tx.bid.create({
-                data: {
-                    amount: bidAmount,
-                    userId: user.id,
-                    gameResultId: gameResult.id,
-                    status: "SUCCESS",
-                },
-            });
-
-            await tx.transaction.create({
-                data: {
-                    amount: bidAmount,
-                    type: "BID",
-                    status: "SUCCESS",
-                    userId: user.id,
-                    bidId: bid.id,
-                    txSignature,
-                },
-            });
-
-            return { bid, gameResult };
-        });
-
-        return NextResponse.json({
-            success: true,
-            message: "Bid recorded",
-            details: result,
-        });
-    } catch (error: any) {
-        console.error("Bid placement failed:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (!walletAddress || !amount || !gameId || !txSignature) {
+      return NextResponse.json(
+        { error: "walletAddress, amount, gameId, and txSignature are required" },
+        { status: 400 }
+      );
     }
+
+    const bidAmount = new Decimal(amount);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.upsert({
+        where: { walletAddress },
+        update: {},
+        create: { walletAddress },
+      });
+
+      // Create GameResult with gameId as @id
+      const gameResult = await tx.gameResult.upsert({
+        where: { gameId },
+        update: { bidding: bidAmount },
+        create: {
+          gameId,
+          userId: user.id,
+          bidding: bidAmount,
+          won: false,
+        },
+      });
+
+      const bid = await tx.bid.create({
+        data: {
+          amount: bidAmount,
+          userId: user.id,
+          gameResultId: gameId, // ← Use gameId directly
+          status: "SUCCESS",
+        },
+      });
+
+      await tx.transaction.create({
+        data: {
+          amount: bidAmount,
+          type: "BID",
+          status: "SUCCESS",
+          userId: user.id,
+          bidId: bid.id,
+          txSignature,
+        },
+      });
+
+      return { bid, gameResult };
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Bid recorded",
+      details: result,
+    });
+  } catch (error: any) {
+    console.error("Bid placement failed:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
+  }
 }

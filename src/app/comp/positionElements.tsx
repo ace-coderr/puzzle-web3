@@ -18,10 +18,18 @@ async function saveResult(
     result: "WIN" | "LOSE",
     opts: { walletAddress?: string; moves: number; time: number; bidding: number; reward?: number }
 ) {
-    if (!opts.walletAddress) return;
-    try {
-        const gameId = localStorage.getItem("currentGameId");
+    if (!opts.walletAddress) {
+        console.log("Demo mode: result not recorded.");
+        return;
+    }
 
+    const gameId = localStorage.getItem("currentGameId");
+    if (!gameId) {
+        console.error("No gameId in localStorage — cannot save result");
+        return;
+    }
+
+    try {
         const res = await fetch("/api/game-results", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -35,23 +43,25 @@ async function saveResult(
             }),
         });
 
-        const text = await res.text();
-        console.log("🔍 Raw server response:", text);
+        const text = await res.text(); // ← Get raw text first
+        console.log("Raw /api/game-results response:", text);
 
-        try {
-            const data = JSON.parse(text);
-            if (!res.ok) {
-                console.error("❌ Failed to save result:", data);
-            } else {
-                console.log("✅ Game result saved:", data);
-                // 🔄 Optionally refresh UI
-                document.dispatchEvent(new CustomEvent("recent-activity-refresh"));
-            }
-        } catch {
-            console.error("❌ Response was not valid JSON:", text.slice(0, 200));
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${text || "Unknown error"}`);
         }
-    } catch (err) {
-        console.error("❌ Error saving result:", err);
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            console.warn("Response not JSON, but OK:", text);
+            return;
+        }
+
+        console.log("Game result saved:", data);
+        document.dispatchEvent(new CustomEvent("recent-activity-refresh"));
+    } catch (err: any) {
+        console.error("saveResult failed:", err.message);
     }
 }
 
@@ -82,6 +92,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [currentBid, setCurrentBid] = useState<number>(0);
     const [bidStarted, setBidStarted] = useState(false);
+    const [showRewardModal, setShowRewardModal] = useState(false);
     const router = useRouter();
 
     // Difficulty
@@ -131,21 +142,21 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     useEffect(() => {
         if (tiles.length === 0 || resultSaved) return;
         const hasWon = tiles.every((tile) => tile.x === tile.bgX && tile.y === tile.bgY);
+
         const handleResult = async () => {
             if (hasWon) {
                 setIsWin(true);
                 setTimerActive(false);
                 setResultSaved(true);
-                await saveResult("WIN",
-                    {
-                        walletAddress: publicKey?.toString(),
-                        moves: moveCount,
-                        time,
-                        bidding: currentBid,
-                        reward: currentBid * 2,
-                    });
+                await saveResult("WIN", {
+                    walletAddress: publicKey?.toString(),
+                    moves: moveCount,
+                    time,
+                    bidding: currentBid,
+                    reward: currentBid * 2,
+                });
                 setBidStarted(false);
-
+                setShowRewardModal(true);
             } else if (moveCount >= maxMoves || time >= maxTime) {
                 setIsGameOver(true);
                 setTimerActive(false);
@@ -159,8 +170,9 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 setBidStarted(false);
             }
         };
+
         handleResult();
-    }, [tiles, moveCount, time, walletAddress, resultSaved, maxMoves, maxTime]);
+    }, [tiles, moveCount, time, publicKey, resultSaved, maxMoves, maxTime, currentBid]);
 
     // Timer Logic
     useEffect(() => {
@@ -366,26 +378,25 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 {/* Show modal */}
                 <Modal
                     title="You Win!"
-                    message={`You solved it in ${moveCount} moves and ${time}s.`}
-                    show={isWin}
+                    message={`You solved it in ${moveCount} moves and ${time}s.\n\nReward: ${currentBid * 2} SOL`}
+                    show={isWin || showRewardModal}
                     onClose={() => {
                         setIsWin(false);
+                        setShowRewardModal(false);
                         handleResetToDefault();
                     }}
                     onConfirm={() => {
-                        if (currentBid > 0) {
-                            router.push("/reward");
-                        } else {
-                            router.push("/");
-                        }
+                        router.push("/reward");
                     }}
-                    confirmText={currentBid > 0 ? "View Reward" : "Play Again"}
+                    confirmText="Claim Reward"
+                    singleButton={!currentBid}
                 >
-                    <div className="mt-4 text-center">
-                        <p className="text-lg font-semibold text-green-400">
-                            Reward: {currentBid > 0 ? `${currentBid * 2} SOL` : "—"}
-                        </p>
-                    </div>
+                    {currentBid > 0 && (
+                        <div className="mt-4 p-4 bg-green-900/50 rounded-lg">
+                            <p className="text-2xl font-bold text-green-400">{currentBid * 2} SOL</p>
+                            <p className="text-sm text-gray-300">Ready to claim!</p>
+                        </div>
+                    )}
                 </Modal>
 
                 <Modal
@@ -397,11 +408,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                         handleResetToDefault();
                     }}
                     singleButton={true}
-                >
-                    <div className="mt-4 text-center text-gray-300">
-                        Hint: Focus on edge tiles first!
-                    </div>
-                </Modal>
+                />
             </div>
         </>
     );

@@ -1,64 +1,54 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getConnection, getServerWallet } from "@/lib/solana";
-import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 
 const connection = getConnection();
 const serverWallet = getServerWallet();
 
 export async function GET(req: Request) {
-    try {
-        const { searchParams } = new URL(req.url);
-        const walletAddress = searchParams.get("walletAddress");
-        if (!walletAddress) return NextResponse.json({ error: "Missing wallet" }, { status: 400 });
+    const { searchParams } = new URL(req.url);
+    const walletAddress = searchParams.get("walletAddress");
+    if (!walletAddress) return NextResponse.json({ error: "Missing wallet" }, { status: 400 });
 
-        const user = await prisma.user.findUnique({
-            where: { walletAddress },
-            include: {
-                rewards: {
-                    where: { claimed: false },
-                    orderBy: { createdAt: "desc" },
-                },
-            },
-        });
+    const user = await prisma.user.findUnique({
+        where: { walletAddress },
+        include: { rewards: { where: { claimed: false }, orderBy: { createdAt: "desc" } } },
+    });
 
-        return NextResponse.json({ rewards: user?.rewards || [] });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    return NextResponse.json({ rewards: user?.rewards || [] });
 }
 
 export async function POST(req: Request) {
     try {
         const { rewardId, walletAddress } = await req.json();
-        if (!rewardId || !walletAddress) throw new Error("Missing data");
+
+        if (!rewardId || !walletAddress) {
+            return NextResponse.json({ error: "Missing rewardId or walletAddress" }, { status: 400 });
+        }
 
         const result = await prisma.$transaction(async (tx) => {
-            const user = await tx.user.findUnique({ where: { walletAddress } });
-            if (!user) throw new Error("User not found");
-
-            const reward = await tx.reward.findUnique({ where: { id: rewardId } });
-            if (!reward) throw new Error("Reward not found");
-            if (reward.claimed) throw new Error("Already claimed");
-
-            const amount = parseFloat(reward.amount.toString());
-            const lamports = amount * 1e9;
-
-            // === Transfer from server wallet ===
-            const toPubkey = new PublicKey(walletAddress);
-            const transferIx = SystemProgram.transfer({
-                fromPubkey: serverWallet.publicKey,
-                toPubkey,
-                lamports,
+            const reward = await tx.reward.findUnique({
+                where: { id: rewardId },
+                include: { user: true },
             });
 
-            const { blockhash } = await connection.getLatestBlockhash();
-            const transaction = new Transaction().add(transferIx);
-            transaction.recentBlockhash = blockhash;
-            transaction.feePayer = serverWallet.publicKey;
+            if (!reward || reward.claimed) throw new Error("Invalid or already claimed reward");
+            if (reward.user.walletAddress !== walletAddress) throw new Error("Unauthorized");
 
-            const signature = await connection.sendTransaction(transaction, [serverWallet]);
-            await connection.confirmTransaction(signature);
+            const lamports = Number(reward.amount) * LAMPORTS_PER_SOL;
+
+            // === SEND SOL ON-CHAIN ===
+            const transferTx = new Transaction().add(
+                SystemProgram.transfer({
+                    fromPubkey: serverWallet.publicKey,
+                    toPubkey: new PublicKey(walletAddress),
+                    lamports,
+                })
+            );
+
+            const signature = await connection.sendTransaction(transferTx, [serverWallet]);
+            await connection.confirmTransaction(signature, "confirmed");
 
             // === Mark claimed ===
             await tx.reward.update({
@@ -66,10 +56,9 @@ export async function POST(req: Request) {
                 data: { claimed: true },
             });
 
-            // === Record payout ===
             await tx.transaction.create({
                 data: {
-                    userId: user.id,
+                    userId: reward.userId,
                     amount: reward.amount,
                     type: "REWARD",
                     status: "SUCCESS",
@@ -77,12 +66,15 @@ export async function POST(req: Request) {
                 },
             });
 
-            return { txSignature: signature };
+            return { success: true, amount: reward.amount.toString(), txSignature: signature };
         });
 
         return NextResponse.json(result);
     } catch (error: any) {
-        console.error("Claim error:", error);
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        console.error("Reward claim error:", error);
+        return NextResponse.json(
+            { error: error.message || "Failed to claim reward" },
+            { status: 500 }
+        );
     }
 }
