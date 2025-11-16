@@ -2,7 +2,7 @@ type ModalProps = {
   title: string;
   message?: string;
   show: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   onConfirm?: () => void;
   confirmText?: string;
   singleButton?: boolean;
@@ -32,8 +32,6 @@ export default function Modal({
         <h2 className="text-xl font-bold mb-2">{title}</h2>
         {message && <p className="mb-4 whitespace-pre-line">{message}</p>}
         {children && <div className="mb-3">{children}</div>}
-
-        {/* SINGLE BUTTON ONLY */}
         <button
           onClick={onConfirm || onClose}
           className={`${bgColor} ${hoverColor} w-full px-6 py-3 rounded-lg font-semibold text-lg mt-4`}

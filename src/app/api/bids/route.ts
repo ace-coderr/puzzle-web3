@@ -17,33 +17,40 @@ export async function POST(req: Request) {
     const bidAmount = new Decimal(amount);
 
     const result = await prisma.$transaction(async (tx) => {
+      // === UPSERT USER ===
       const user = await tx.user.upsert({
         where: { walletAddress },
         update: {},
         create: { walletAddress },
       });
 
-      // Create GameResult with gameId as @id
+      // === UPSERT GAME RESULT (with ALL required fields) ===
       const gameResult = await tx.gameResult.upsert({
         where: { gameId },
         update: { bidding: bidAmount },
         create: {
           gameId,
           userId: user.id,
+          moves: 0,
+          score: 0,
           bidding: bidAmount,
           won: false,
+          difficulty: "medium",
+          reward: null,
         },
       });
 
+      // === CREATE BID ===
       const bid = await tx.bid.create({
         data: {
           amount: bidAmount,
           userId: user.id,
-          gameResultId: gameId, // ← Use gameId directly
+          gameResultId: gameId,
           status: "SUCCESS",
         },
       });
 
+      // === RECORD TRANSACTION ===
       await tx.transaction.create({
         data: {
           amount: bidAmount,

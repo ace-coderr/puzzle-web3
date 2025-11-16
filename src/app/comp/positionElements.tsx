@@ -18,18 +18,19 @@ export type Tile = {
    ------------------------------------------------------------- */
 async function saveResult(
     result: "WIN" | "LOSE",
-    opts: { walletAddress?: string; moves: number; time: number; bidding: number; reward?: number }
+    opts: {
+        walletAddress?: string;
+        moves: number;
+        time: number;
+        bidding: number;
+        reward?: number;
+        difficulty?: string;
+    }
 ) {
-    if (!opts.walletAddress) {
-        console.log("Demo mode: result not recorded.");
-        return;
-    }
-
+    if (!opts.walletAddress) return;
     const gameId = localStorage.getItem("currentGameId");
-    if (!gameId) {
-        console.error("No gameId in localStorage — cannot save result");
-        return;
-    }
+    if (!gameId) return;
+
 
     try {
         const res = await fetch("/api/game-results", {
@@ -42,6 +43,7 @@ async function saveResult(
                 bidding: opts.bidding,
                 won: result === "WIN",
                 gameId,
+                difficulty: opts.difficulty,
             }),
         });
 
@@ -108,6 +110,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
     const [maxMoves, setMaxMoves] = useState(30);
     const [maxTime, setMaxTime] = useState(90);
+    const [rewardMultiplier, setRewardMultiplier] = useState(1.5);
 
     const difficulties = [
         { level: 'easy' as const, moves: 40, time: 180 },
@@ -119,6 +122,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         const d = difficulties.find(d => d.level === difficulty)!;
         setMaxMoves(d.moves);
         setMaxTime(d.time);
+        setRewardMultiplier(d.level === 'easy' ? 1.2 : d.level === 'medium' ? 1.5 : 2.5);
     }, [difficulty]);
 
     /* ---------- Tile generation ---------- */
@@ -126,15 +130,12 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         const leftPositions = [0, 8, 16, 24, 32];
         const topPositions = [0, 6, 12, 18];
         const bgPositions: [number, number][] = [];
-
         for (let y of topPositions) {
             for (let x of leftPositions) {
                 bgPositions.push([x, y]);
             }
         }
-
         const shuffled = shuffleArray(bgPositions);
-
         return bgPositions.map(([bgX, bgY], i) => {
             const [x, y] = shuffled[i];
             return { id: i, x, y, bgX, bgY };
@@ -164,7 +165,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     moves: moveCount,
                     time,
                     bidding: currentBid,
-                    reward: currentBid * 2,
+                    difficulty,
                 });
                 setBidStarted(false);
             } else if (moveCount >= maxMoves || time >= maxTime) {
@@ -176,13 +177,13 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     moves: moveCount,
                     time,
                     bidding: currentBid,
+                    difficulty,
                 });
                 setBidStarted(false);
             }
         };
-
         handleResult();
-    }, [tiles, moveCount, time, publicKey, resultSaved, maxMoves, maxTime, currentBid]);
+    }, [tiles, moveCount, time, publicKey, resultSaved, maxMoves, maxTime, currentBid, difficulty]);
 
 
     /* ---------- Timer ---------- */
@@ -328,18 +329,22 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             {/* ----- Difficulty picker (only when wallet connected) ----- */}
             {connected && (
                 <div className="flex justify-center gap-3 mt-4 mb-2">
-                    {difficulties.map(d => (
-                        <button
-                            key={d.level}
-                            onClick={() => setDifficulty(d.level)}
-                            className={`px-4 py-1 rounded-lg text-sm font-medium transition ${difficulty === d.level
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                }`}
-                        >
-                            {d.level.toUpperCase()}
-                        </button>
-                    ))}
+                    {difficulties.map(d => {
+                        const multiplier = d.level === 'easy' ? '1.2x' : d.level === 'medium' ? '1.5x' : '2.5x';
+                        return (
+                            <button
+                                key={d.level}
+                                onClick={() => setDifficulty(d.level)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 ${difficulty === d.level
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                    }`}
+                            >
+                                <span>{d.level.toUpperCase()}</span>
+                                <span className="text-xs opacity-80">• {multiplier}</span>
+                            </button>
+                        );
+                    })}
                 </div>
             )}
 
@@ -351,7 +356,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             </div>
 
             {/* ----- Puzzle board ----- */}
-            {/* {imageUrl && ( */}
             <div className="relative w-[40vw] h-[24vw] overflow-hidden stylle">
                 {tiles.map((tile) => (
                     <div
@@ -375,7 +379,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     />
                 ))}
             </div>
-            {/* )} */}
 
 
             {/* ----- Original image + image controls ----- */}
@@ -417,12 +420,20 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     title="Puzzle Victory"
                     message={`Won in ${moveCount} moves, ${time}s`}
                     show={isWin}
-                    onClose={() => { setIsWin(false); handleResetToDefault(); }}
+                    onClose={() => {
+                        setIsWin(false);
+                        handleResetToDefault();
+                    }}
                     onConfirm={() => router.push("/reward")}
                     confirmText="Claim Reward"
                     variant="success"
                 >
-                    <p className="text-2xl font-bold text-green-400">{currentBid * 2} SOL</p>
+                    <p className="text-2xl font-bold text-green-400">
+                        {(currentBid * rewardMultiplier).toFixed(2)} SOL
+                    </p>
+                    <p className="text-sm text-gray-300 mt-1">
+                        {difficulty.toUpperCase()} Difficulty
+                    </p>
                 </Modal>
 
                 {/* Game Over */}
@@ -430,7 +441,10 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     title="Game Over"
                     message="Out of moves or time!"
                     show={isGameOver}
-                    onClose={() => { setIsGameOver(false); handleResetToDefault(); }}
+                    onClose={() => {
+                        setIsGameOver(false);
+                        handleResetToDefault();
+                    }}
                     singleButton={true}
                 />
             </div>

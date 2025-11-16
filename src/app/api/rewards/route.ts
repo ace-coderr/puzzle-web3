@@ -6,39 +6,39 @@ import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana
 const connection = getConnection();
 const serverWallet = getServerWallet();
 
-export async function GET(req: Request) {
-    const { searchParams } = new URL(req.url);
-    const walletAddress = searchParams.get("walletAddress");
-    if (!walletAddress) return NextResponse.json({ error: "Missing wallet" }, { status: 400 });
-
-    const user = await prisma.user.findUnique({
-        where: { walletAddress },
-        include: { rewards: { where: { claimed: false }, orderBy: { createdAt: "desc" } } },
-    });
-
-    return NextResponse.json({ rewards: user?.rewards || [] });
-}
-
 export async function POST(req: Request) {
     try {
-        const { rewardId, walletAddress } = await req.json();
+        const { gameResultId, walletAddress } = await req.json();
 
-        if (!rewardId || !walletAddress) {
-            return NextResponse.json({ error: "Missing rewardId or walletAddress" }, { status: 400 });
+        if (!gameResultId || !walletAddress) {
+            return NextResponse.json(
+                { error: "Missing gameResultId or walletAddress" },
+                { status: 400 }
+            );
         }
 
         const result = await prisma.$transaction(async (tx) => {
-            const reward = await tx.reward.findUnique({
-                where: { id: rewardId },
-                include: { user: true },
+            // FIX: Use `gameId`, NOT `id`
+            const gameResult = await tx.gameResult.findUnique({
+                where: { gameId: gameResultId }, // ← CORRECT
+                include: {
+                    user: true,
+                    rewardEntry: true,
+                },
             });
 
-            if (!reward || reward.claimed) throw new Error("Invalid or already claimed reward");
-            if (reward.user.walletAddress !== walletAddress) throw new Error("Unauthorized");
+            if (!gameResult) throw new Error("Game result not found");
+            if (!gameResult.won) throw new Error("You did not win this game");
+            if (!gameResult.rewardEntry) throw new Error("No reward available");
+            if (gameResult.rewardEntry.claimed) throw new Error("Already claimed");
+            if (gameResult.user.walletAddress !== walletAddress) {
+                throw new Error("Unauthorized");
+            }
 
-            const lamports = Number(reward.amount) * LAMPORTS_PER_SOL;
+            const amount = gameResult.rewardEntry.amount;
+            const lamports = Number(amount) * LAMPORTS_PER_SOL;
 
-            // === SEND SOL ON-CHAIN ===
+            // Send SOL on-chain
             const transferTx = new Transaction().add(
                 SystemProgram.transfer({
                     fromPubkey: serverWallet.publicKey,
@@ -50,23 +50,28 @@ export async function POST(req: Request) {
             const signature = await connection.sendTransaction(transferTx, [serverWallet]);
             await connection.confirmTransaction(signature, "confirmed");
 
-            // === Mark claimed ===
+            // Mark reward as claimed
             await tx.reward.update({
-                where: { id: rewardId },
+                where: { id: gameResult.rewardEntry.id },
                 data: { claimed: true },
             });
 
+            // Record transaction
             await tx.transaction.create({
                 data: {
-                    userId: reward.userId,
-                    amount: reward.amount,
+                    userId: gameResult.userId,
+                    amount,
                     type: "REWARD",
                     status: "SUCCESS",
                     txSignature: signature,
                 },
             });
 
-            return { success: true, amount: reward.amount.toString(), txSignature: signature };
+            return {
+                success: true,
+                amount: amount.toString(),
+                txSignature: signature,
+            };
         });
 
         return NextResponse.json(result);
