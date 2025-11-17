@@ -1,67 +1,107 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
+// GET — Fetch recent successful bids
+export async function GET() {
   try {
-    const { walletAddress, gameId, amount, txSignature } = await req.json();
-
-    if (!walletAddress || !gameId || !amount || !txSignature) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
-
-    const bidAmount = Number(amount);
-
-    await prisma.$transaction(async (tx) => {
-      const user = await tx.user.upsert({
-        where: { walletAddress },
-        update: {},
-        create: { walletAddress },
-      });
-
-      await tx.gameResult.upsert({
-        where: { gameId },
-        update: { bidding: bidAmount },
-        create: {
-          gameId,
-          userId: user.id,
-          moves: 0,
-          score: 0,
-          bidding: bidAmount,
-          won: false,
-          difficulty: "medium",
-          reward: null,
+    const bids = await prisma.bid.findMany({
+      where: { status: "SUCCESS" },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      include: {
+        user: {
+          select: { walletAddress: true },
         },
-      });
-
-      const bid = await tx.bid.create({
-        data: {
-          gameResultId: gameId,
-          userId: user.id,
-          amount: bidAmount,
-          status: "SUCCESS",
+        gameResult: {
+          select: { gameId: true },
         },
-      });
-
-      await tx.transaction.create({
-        data: {
-          userId: user.id,
-          bidId: bid.id,
-          amount: bidAmount,
-          type: "BID",
-          status: "SUCCESS",
-          txSignature,
-        },
-      });
+      },
     });
 
-    return NextResponse.json({ success: true });
+    const formatted = bids.map((b) => ({
+      id: b.id,
+      wallet: b.user.walletAddress
+        ? `${b.user.walletAddress.slice(0, 4)}...${b.user.walletAddress.slice(-4)}`
+        : "Anon",
+      amount: Number(b.amount),
+      time: b.createdAt.toLocaleTimeString("en-NG", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      gameId: b.gameResult.gameId,
+    }));
+
+    return NextResponse.json({ bids: formatted });
   } catch (error) {
-    console.error("Bid failed:", error);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+    console.error("Error fetching bids:", error);
+    return NextResponse.json({ bids: [] }, { status: 500 });
+  }
+}
+
+// POST — Create new bid + game session
+export async function POST(req: Request) {
+  try {
+    const { walletAddress, amount } = await req.json();
+
+    if (!walletAddress || !amount) {
+      return NextResponse.json({ error: "Missing walletAddress or amount" }, { status: 400 });
+    }
+
+    // Auto-create user if not found
+    const user = await prisma.user.upsert({
+      where: { walletAddress },
+      update: {},
+      create: { walletAddress },
+    });
+
+    // 1. Create GameResult with ALL required fields
+    const gameResult = await prisma.gameResult.create({
+      data: {
+        gameId: crypto.randomUUID(),
+        userId: user.id,
+        moves: 0,
+        score: 0,
+        bidding: new Decimal(amount),
+        won: false,
+        difficulty: "medium",
+      },
+    });
+
+    // 2. Create Bid linked to GameResult
+    const newBid = await prisma.bid.create({
+      data: {
+        amount: new Decimal(amount),
+        status: "SUCCESS", // Changed to string for no errors
+        userId: user.id,
+        gameResultId: gameResult.gameId,
+      },
+      include: {
+        user: { select: { walletAddress: true } },
+        gameResult: true,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        bid: {
+          id: newBid.id,
+          amount: Number(newBid.amount),
+          status: newBid.status,
+          gameId: newBid.gameResult.gameId,
+          walletAddress: newBid.user.walletAddress,
+        },
+        message: "Bid created successfully",
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    console.error("Error creating bid:", error);
+    return NextResponse.json(
+      { error: "Failed to create bid", details: error.message },
+      { status: 500 }
+    );
   }
 }

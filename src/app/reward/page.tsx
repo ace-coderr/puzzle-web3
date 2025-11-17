@@ -21,7 +21,6 @@ type GameResult = {
 export default function RewardPage() {
   const { publicKey } = useWallet();
   const router = useRouter();
-
   const [results, setResults] = useState<GameResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState<string | null>(null);
@@ -31,7 +30,6 @@ export default function RewardPage() {
     tx?: string;
   }>({ open: false });
 
-  // Fetch game history
   useEffect(() => {
     if (!publicKey) return;
     fetchHistory();
@@ -51,23 +49,29 @@ export default function RewardPage() {
     }
   };
 
-  // Claim reward
-  const handleClaim = async (result: GameResult) => {
-    if (!result.reward || result.claimed || !publicKey) return;
+  const handleClaim = async (gameId: string) => {
+    if (!publicKey) {
+      alert("Wallet not connected!");
+      return;
+    }
 
-    setClaiming(result.id);
+    setClaiming(gameId);
+
     try {
       const res = await fetch("/api/rewards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          gameResultId: result.id,
+          gameId: gameId,
           walletAddress: publicKey.toBase58(),
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Claim failed");
+
+      if (!res.ok) {
+        throw new Error(data.error || "Claim failed");
+      }
 
       setModal({
         open: true,
@@ -75,20 +79,16 @@ export default function RewardPage() {
         tx: data.txSignature,
       });
 
-      // Update claimed status
-      setResults((prev) =>
-        prev.map((r) =>
-          r.id === result.id ? { ...r, claimed: true } : r
-        )
-      );
+      // Refresh history after successful claim
+      fetchHistory();
+
     } catch (err: any) {
-      alert(`Claim failed: ${err.message}`);
+      alert("Claim failed: " + err.message);
     } finally {
       setClaiming(null);
     }
   };
 
-  // UI States
   if (!publicKey) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-950 text-gray-300 text-lg font-medium">
@@ -112,11 +112,10 @@ export default function RewardPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 text-white p-6">
       <div className="max-w-2xl mx-auto space-y-10">
-
         {/* Unclaimed Rewards */}
         {unclaimed.length > 0 && (
           <section className="bg-gradient-to-r from-emerald-900/20 to-teal-900/20 p-6 rounded-2xl border border-emerald-700/50 shadow-xl">
-            <h2 className="text-2xl font-bold mb-5 text-emerald-400 flex items-center gap-2">
+            <h2 className="text-2xl font-bold mb-5 text-emerald-400">
               Unclaimed Rewards
             </h2>
             <div className="space-y-4">
@@ -130,20 +129,18 @@ export default function RewardPage() {
                       {r.reward!.toFixed(3)} SOL
                     </p>
                     <p className="text-sm text-gray-300 mt-1">
-                      Won in <span className="font-mono">{r.moves}</span> moves •{" "}
-                      <span className="font-mono">{r.time}s</span> •{" "}
-                      {new Date(r.createdAt).toLocaleDateString()}
+                      Won in <span className="font-mono">{r.moves}</span> moves • {r.time}s • {new Date(r.createdAt).toLocaleDateString()}
                     </p>
                     <p className="text-xs text-emerald-300 mt-1">
                       {r.difficulty.toUpperCase()} MODE
                     </p>
                   </div>
                   <Button
-                    onClick={() => handleClaim(r)}
+                    onClick={() => handleClaim(r.id)}
                     disabled={claiming === r.id}
                     className={`min-w-[120px] font-bold transition-all ${claiming === r.id
-                        ? "bg-gray-600 cursor-not-allowed"
-                        : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:scale-105"
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:scale-105"
                       }`}
                   >
                     {claiming === r.id ? (
@@ -167,10 +164,7 @@ export default function RewardPage() {
           {history.length === 0 ? (
             <div className="text-center py-16 bg-slate-800/50 rounded-2xl border border-slate-700">
               <p className="text-gray-400 text-lg">No games played yet.</p>
-              <Button
-                onClick={() => router.push("/")}
-                className="mt-6 bg-blue-600 hover:bg-blue-700"
-              >
+              <Button onClick={() => router.push("/")} className="mt-6 bg-blue-600 hover:bg-blue-700">
                 Play Now
               </Button>
             </div>
@@ -179,9 +173,7 @@ export default function RewardPage() {
               {history.map((r) => (
                 <div
                   key={r.id}
-                  className={`p-5 rounded-xl border transition-all backdrop-blur-sm ${r.won
-                      ? "bg-emerald-900/30 border-emerald-700/50"
-                      : "bg-red-900/30 border-red-700/50"
+                  className={`p-5 rounded-xl border transition-all backdrop-blur-sm ${r.won ? "bg-emerald-900/30 border-emerald-700/50" : "bg-red-900/30 border-red-700/50"
                     }`}
                 >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -190,14 +182,11 @@ export default function RewardPage() {
                         {r.won ? "WIN" : "LOSE"}
                       </p>
                       <p className="text-sm text-gray-300 mt-1">
-                        <span className="font-mono">{r.moves}</span> moves •{" "}
-                        <span className="font-mono">{r.time}s</span> • Bid:{" "}
-                        <span className="font-mono">{r.bidding.toFixed(3)}</span> SOL
+                        <span className="font-mono">{r.moves}</span> moves • {r.time}s • Bid: {r.bidding.toFixed(3)} SOL
                       </p>
                       {r.won && r.reward && (
                         <p className="text-xs text-emerald-300 mt-1">
-                          Reward: {r.reward.toFixed(3)} SOL{" "}
-                          {r.claimed ? "• Claimed" : ""}
+                          Reward: {r.reward.toFixed(3)} SOL {r.claimed ? "• Claimed" : ""}
                         </p>
                       )}
                     </div>
@@ -212,28 +201,31 @@ export default function RewardPage() {
         </section>
       </div>
 
-      {/* Success Modal */}
+      {/* Success Modal – Only X button */}
       <Modal
         title="Reward Claimed!"
         show={modal.open}
-        onClose={() => setModal({ open: false })}
-        singleButton={true}
+        onClose={() => {
+          setModal({ open: false });
+          fetchHistory();
+        }}
         variant="success"
+        hideFooter={true}
       >
-        <div className="text-center py-4">
-          <p className="text-4xl font-black text-emerald-400 mb-2">
-            {modal.amount} SOL
+        <div className="text-center py-8 space-y-6">
+          <p className="text-5xl font-black text-emerald-400">
+            +{modal.amount} SOL
           </p>
-          <p className="text-xs text-gray-400 break-all font-mono mb-4">
+          <p className="text-xs font-mono text-gray-400 break-all max-w-xs mx-auto">
             {modal.tx}
           </p>
           <a
-            href={`https://explorer.solana.com/tx/${modal.tx}?cluster=devnet`}
+            href={`https://solana.fm/tx/${modal.tx}?cluster=devnet`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+            className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-lg"
           >
-            View on Solana Explorer
+            View on Solana.fm (Devnet)
           </a>
         </div>
       </Modal>

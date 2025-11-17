@@ -1,3 +1,4 @@
+// src/components/modal.tsx
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -10,6 +11,7 @@ interface ModalProps {
   singleButton?: boolean;
   variant?: "default" | "success" | "start" | "leaderboard";
   children?: React.ReactNode;
+  hideFooter?: boolean;   // ← NEW PROP ADDED
 }
 
 export default function Modal({
@@ -22,6 +24,7 @@ export default function Modal({
   singleButton,
   variant = "default",
   children,
+  hideFooter = false,     // ← default false (shows footer)
 }: ModalProps) {
   if (!show) return null;
 
@@ -44,7 +47,7 @@ export default function Modal({
       <div
         className={`relative w-full max-w-md p-6 rounded-2xl shadow-2xl border ${bgColor} ${borderColor} text-white transform transition-all scale-100`}
       >
-        {/* CLOSE BUTTON (X) */}
+        {/* CLOSE BUTTON (X) - Always visible if onClose exists */}
         {onClose && (
           <button
             onClick={onClose}
@@ -56,7 +59,9 @@ export default function Modal({
 
         {/* Title */}
         {title && (
-          <h2 className="text-2xl font-bold text-center mb-4">{title}</h2>
+          <h2 className="text-2xl font-bold text-center mb-4 pr-10">
+            {title}
+          </h2>
         )}
 
         {/* Message */}
@@ -64,28 +69,30 @@ export default function Modal({
           <p className="text-center text-lg mb-6">{message}</p>
         )}
 
-        {/* Children (e.g. reward amount) */}
+        {/* Custom Children (e.g. +1.200000 SOL) */}
         {children && <div className="text-center mb-6">{children}</div>}
 
-        {/* Buttons */}
-        <div className="flex justify-center gap-3">
-          {onConfirm && !singleButton && (
-            <button
-              onClick={onConfirm}
-              className="px-6 py-2 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition"
-            >
-              {confirmText}
-            </button>
-          )}
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="px-6 py-2 bg-white/20 hover:bg-white/40 font-bold rounded-lg transition"
-            >
-              {singleButton ? "Restart" : "Close"}
-            </button>
-          )}
-        </div>
+        {/* Footer Buttons - Only show if hideFooter is false */}
+        {!hideFooter && (
+          <div className="flex justify-center gap-3">
+            {onConfirm && !singleButton && (
+              <button
+                onClick={onConfirm}
+                className="px-6 py-2 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition"
+              >
+                {confirmText}
+              </button>
+            )}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="px-6 py-2 bg-white/20 hover:bg-white/40 font-bold rounded-lg transition"
+              >
+                {singleButton ? "Restart" : "Close"}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

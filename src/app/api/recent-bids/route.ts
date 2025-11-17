@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { BidStatus } from "@prisma/client";
 import { Decimal } from "@prisma/client/runtime/library";
 
 export async function GET() {
@@ -8,7 +7,7 @@ export async function GET() {
     const bids = await prisma.bid.findMany({
       orderBy: { createdAt: "desc" },
       take: 10,
-      where: { status: BidStatus.SUCCESS }, //
+      where: { status: "SUCCESS" },
       include: {
         user: {
           select: { walletAddress: true },
@@ -66,7 +65,7 @@ export async function POST(req: Request) {
     const newBid = await prisma.bid.create({
       data: {
         amount: new Decimal(amount),
-        status: BidStatus.PENDING,
+        status: "PENDING",
         userId: user.id,
         gameResultId: gameResult.gameId,
       },
