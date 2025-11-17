@@ -1,7 +1,7 @@
 "use client";
 
-import Home from "../comp/Home";
-import { Navbar } from "../comp/Navbar";
+import Home from "./home";
+import { Navbar } from "./navbar";
 
 export default function DashboardPage() {
     return (

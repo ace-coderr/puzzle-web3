@@ -1,9 +1,9 @@
 "use client"
 
 import React from "react";
-import HomeComponent from "./comp/Home";
+import HomeComponent from "./components/home";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import {Navbar} from "./comp/Navbar";
+import {Navbar} from "./components/navbar";
 
 
 export default function Home() {

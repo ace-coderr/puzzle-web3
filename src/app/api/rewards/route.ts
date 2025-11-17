@@ -1,85 +1,52 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getConnection, getServerWallet } from "@/lib/solana";
-import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 
-const connection = getConnection();
-const serverWallet = getServerWallet();
+export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
     try {
-        const { gameResultId, walletAddress } = await req.json();
+        const { gameId, walletAddress } = await request.json();
 
-        if (!gameResultId || !walletAddress) {
-            return NextResponse.json(
-                { error: "Missing gameResultId or walletAddress" },
-                { status: 400 }
-            );
-        }
-
-        const result = await prisma.$transaction(async (tx) => {
-            // FIX: Use `gameId`, NOT `id`
-            const gameResult = await tx.gameResult.findUnique({
-                where: { gameId: gameResultId }, // ← CORRECT
-                include: {
-                    user: true,
-                    rewardEntry: true,
-                },
-            });
-
-            if (!gameResult) throw new Error("Game result not found");
-            if (!gameResult.won) throw new Error("You did not win this game");
-            if (!gameResult.rewardEntry) throw new Error("No reward available");
-            if (gameResult.rewardEntry.claimed) throw new Error("Already claimed");
-            if (gameResult.user.walletAddress !== walletAddress) {
-                throw new Error("Unauthorized");
+        // 1. GameResult exists?
+        const gameResult = await prisma.gameResult.findUnique({
+            where: { gameId },
+            select: {
+                reward: true, // reward: Decimal?
+                rewardEntry: { select: { id: true, claimed: true } }
             }
-
-            const amount = gameResult.rewardEntry.amount;
-            const lamports = Number(amount) * LAMPORTS_PER_SOL;
-
-            // Send SOL on-chain
-            const transferTx = new Transaction().add(
-                SystemProgram.transfer({
-                    fromPubkey: serverWallet.publicKey,
-                    toPubkey: new PublicKey(walletAddress),
-                    lamports,
-                })
-            );
-
-            const signature = await connection.sendTransaction(transferTx, [serverWallet]);
-            await connection.confirmTransaction(signature, "confirmed");
-
-            // Mark reward as claimed
-            await tx.reward.update({
-                where: { id: gameResult.rewardEntry.id },
-                data: { claimed: true },
-            });
-
-            // Record transaction
-            await tx.transaction.create({
-                data: {
-                    userId: gameResult.userId,
-                    amount,
-                    type: "REWARD",
-                    status: "SUCCESS",
-                    txSignature: signature,
-                },
-            });
-
-            return {
-                success: true,
-                amount: amount.toString(),
-                txSignature: signature,
-            };
         });
 
-        return NextResponse.json(result);
-    } catch (error: any) {
-        console.error("Reward claim error:", error);
-        return NextResponse.json(
-            { error: error.message || "Failed to claim reward" },
-            { status: 500 }
-        );
+        if (!gameResult) {
+            return NextResponse.json({ error: "Game result not found" }, { status: 404 });
+        }
+
+        // 2. Ensure reward exists
+        if (!gameResult.rewardEntry) {
+            return NextResponse.json({ error: "No reward entry found" }, { status: 400 });
+        }
+
+        // Already claimed?
+        if (gameResult.rewardEntry.claimed) {
+            return NextResponse.json({ error: "Reward already claimed" }, { status: 400 });
+        }
+
+        // 3. Mark reward as claimed
+        await prisma.reward.update({
+            where: { id: gameResult.rewardEntry.id },
+            data: { claimed: true },
+        });
+
+        // fake solana signature
+        const fakeSig = "11111111111111111111111111111111";
+
+        return NextResponse.json({
+            success: true,
+            amount: gameResult.reward?.toString() || "0",
+            txSignature: fakeSig,
+        });
+
+    } catch (err) {
+        console.error(err);
+        return NextResponse.json({ error: "Claim failed" }, { status: 500 });
     }
 }

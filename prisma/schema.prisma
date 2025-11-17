@@ -8,80 +8,79 @@ datasource db {
 }
 
 model User {
-  id            Int     @id @default(autoincrement())
-  customId      String  @default(uuid())
-  walletAddress String  @unique
-  balance       Decimal @default(0.0) @db.Decimal(18, 8)
-
-  transactions Transaction[]
-  gameResults  GameResult[]
-  bids         Bid[]
-  rewards      Reward[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int         @id @default(autoincrement())
+  customId      String      @default(uuid())
+  walletAddress String      @unique
+  balance       Decimal     @default(0.0) @db.Decimal(18, 8)
+  transactions  Transaction[]
+  gameResults   GameResult[]
+  bids          Bid[]
+  rewards       Reward[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@index([walletAddress])
 }
 
 model GameResult {
-  gameId      String   @id @unique
-  userId      Int
-  moves       Int
-  score       Int
-  bidding     Decimal  @db.Decimal(18, 8)
-  won         Boolean
-  difficulty  String   @default("medium")
-  reward      Decimal? @db.Decimal(18, 8)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  gameId        String      @id
+  userId        Int
+  moves         Int
+  score         Int
+  bidding       Decimal     @db.Decimal(18, 8)
+  won           Boolean
+  difficulty    String      @default("medium")
+  reward        Decimal?    @db.Decimal(18, 8)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id])
-  rewardEntry Reward?  @relation("GameResultReward")
-  bid         Bid?
+  user          User        @relation(fields: [userId], references: [id])
+  rewardEntry   Reward?     @relation("GameResultReward")
+  bid           Bid?
+
+  @@index([userId, createdAt])
+  @@index([won])
 }
 
 model Bid {
-  id           Int       @id @default(autoincrement())
-  gameResultId String    @unique
-  userId       Int
-  amount       Decimal   @db.Decimal(18, 8)
-  status       BidStatus @default(PENDING)
-  createdAt    DateTime  @default(now())
+  id            Int         @id @default(autoincrement())
+  gameResultId  String      @unique
+  userId        Int
+  amount        Decimal     @db.Decimal(18, 8)
+  status        BidStatus   @default(PENDING)
+  createdAt     DateTime    @default(now())
 
-  user       User       @relation(fields: [userId], references: [id])
-  gameResult GameResult @relation(fields: [gameResultId], references: [gameId])
-
-  transactions Transaction[]
+  user          User        @relation(fields: [userId], references: [id])
+  gameResult    GameResult  @relation(fields: [gameResultId], references: [gameId])
+  transactions  Transaction[]
 }
 
 model Transaction {
-  id     Int               @id @default(autoincrement())
-  amount Decimal           @db.Decimal(18, 8)
-  type   TransactionType
-  status TransactionStatus
+  id            Int             @id @default(autoincrement())
+  amount        Decimal         @db.Decimal(18, 8)
+  type          TransactionType
+  status        TransactionStatus
+  userId        Int
+  bidId         Int?
+  txSignature   String?
+  createdAt     DateTime        @default(now())
 
-  userId Int
-  bidId  Int?
-  user   User @relation(fields: [userId], references: [id])
-  bid    Bid? @relation(fields: [bidId], references: [id])
-
-  txSignature String?
-  createdAt   DateTime @default(now())
+  user          User            @relation(fields: [userId], references: [id])
+  bid           Bid?            @relation(fields: [bidId], references: [id])
 }
 
 model Reward {
-  id           String   @id @default(cuid())
-  gameResultId String   @unique
-  userId       Int
-  title        String
-  description  String?
-  amount       Decimal  @db.Decimal(18, 8)
-  claimed      Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  id            String      @id @default(cuid())
+  gameResultId  String      @unique
+  userId        Int
+  title         String
+  description   String?
+  amount        Decimal     @db.Decimal(18, 8)
+  claimed       Boolean     @default(false)
+  createdAt     DateTime    @default(now())
 
-  user       User       @relation(fields: [userId], references: [id])
-  gameResult GameResult @relation("GameResultReward", fields: [gameResultId], references: [gameId])
+  user          User        @relation(fields: [userId], references: [id])
+  gameResult    GameResult  @relation("GameResultReward", fields: [gameResultId], references: [gameId])
 }
 
 enum BidStatus {

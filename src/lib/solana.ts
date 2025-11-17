@@ -1,4 +1,3 @@
-// lib/solana.ts
 import { Connection, Keypair, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 const RPC_URL = process.env.RPC_URL!;

@@ -1,31 +1,29 @@
-// app/api/bids/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Decimal } from "@prisma/client/runtime/library";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
     const { walletAddress, gameId, amount, txSignature } = await req.json();
 
-    if (!walletAddress || !amount || !gameId || !txSignature) {
+    if (!walletAddress || !gameId || !amount || !txSignature) {
       return NextResponse.json(
-        { error: "walletAddress, amount, gameId, and txSignature are required" },
+        { error: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    const bidAmount = new Decimal(amount);
+    const bidAmount = Number(amount);
 
-    const result = await prisma.$transaction(async (tx) => {
-      // === UPSERT USER ===
+    await prisma.$transaction(async (tx) => {
       const user = await tx.user.upsert({
         where: { walletAddress },
         update: {},
         create: { walletAddress },
       });
 
-      // === UPSERT GAME RESULT (with ALL required fields) ===
-      const gameResult = await tx.gameResult.upsert({
+      await tx.gameResult.upsert({
         where: { gameId },
         update: { bidding: bidAmount },
         create: {
@@ -40,41 +38,30 @@ export async function POST(req: Request) {
         },
       });
 
-      // === CREATE BID ===
       const bid = await tx.bid.create({
         data: {
-          amount: bidAmount,
-          userId: user.id,
           gameResultId: gameId,
+          userId: user.id,
+          amount: bidAmount,
           status: "SUCCESS",
         },
       });
 
-      // === RECORD TRANSACTION ===
       await tx.transaction.create({
         data: {
+          userId: user.id,
+          bidId: bid.id,
           amount: bidAmount,
           type: "BID",
           status: "SUCCESS",
-          userId: user.id,
-          bidId: bid.id,
           txSignature,
         },
       });
-
-      return { bid, gameResult };
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Bid recorded",
-      details: result,
-    });
-  } catch (error: any) {
-    console.error("Bid placement failed:", error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Bid failed:", error);
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }

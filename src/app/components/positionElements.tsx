@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Modal from "./Modal";
+import Modal from "./modal";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 
@@ -23,14 +23,16 @@ async function saveResult(
         moves: number;
         time: number;
         bidding: number;
-        reward?: number;
         difficulty?: string;
     }
 ) {
     if (!opts.walletAddress) return;
-    const gameId = localStorage.getItem("currentGameId");
-    if (!gameId) return;
 
+    const gameId = localStorage.getItem("currentGameId");
+    if (!gameId) {
+        console.warn("No gameId, cannot save");
+        return;
+    }
 
     try {
         const res = await fetch("/api/game-results", {
@@ -47,22 +49,12 @@ async function saveResult(
             }),
         });
 
-        const text = await res.text();
-        console.log("Raw /api/game-results response:", text);
-
         if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${text || "Unknown error"}`);
+            const err = await res.text();
+            throw new Error(`HTTP ${res.status}: ${err}`);
         }
 
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch {
-            console.warn("Response not JSON, but OK:", text);
-            return;
-        }
-
-        console.log("Game result saved:", data);
+        console.log("Result saved successfully");
         document.dispatchEvent(new CustomEvent("recent-activity-refresh"));
     } catch (err: any) {
         console.error("saveResult failed:", err.message);
@@ -89,18 +81,21 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const router = useRouter();
 
     /* ---------- State ---------- */
-    const [imageUrl, setImageUrl] = useState<string>("/images/wall.jpg")
-    const [tiles, setTiles] = useState<Tile[]>([])
-    const [draggedTile, setDraggedTile] = useState<Tile | null>(null)
-    const [hoveredTile, setHoveredTile] = useState<Tile | null>(null)
-    const [moveCount, setMoveCount] = useState<number>(0)
-    const [isGameOver, setIsGameOver] = useState<boolean>(false)
-    const [isWin, setIsWin] = useState<boolean>(false)
-    const [time, setTime] = useState<number>(0)
-    const [timerActive, setTimerActive] = useState<boolean>(false)
-    const [showStartPage, setShowStartPage] = useState(true)
+    const [imageUrl, setImageUrl] = useState<string>("/images/wall.jpg");
+    const [tiles, setTiles] = useState<Tile[]>([]);
+    const [draggedTile, setDraggedTile] = useState<Tile | null>(null);
+    const [hoveredTile, setHoveredTile] = useState<Tile | null>(null);
+    const [moveCount, setMoveCount] = useState<number>(0);
+    const [isGameOver, setIsGameOver] = useState<boolean>(false);
+    const [isWin, setIsWin] = useState<boolean>(false);
+    const [time, setTime] = useState<number>(0);
+    const [timerActive, setTimerActive] = useState<boolean>(false);
+    const [showStartPage, setShowStartPage] = useState(true);
     const [walletAddress, setWalletAddress] = useState<string | undefined>(undefined);
     const [resultSaved, setResultSaved] = useState<boolean>(false);
+    const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
+    const [leaderboardData, setLeaderboardData] = useState<any>(null);
+    const [loadingLB, setLoadingLB] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const [currentBid, setCurrentBid] = useState<number>(0);
     const [showStartModal, setShowStartModal] = useState(false);
@@ -302,6 +297,29 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         return () => document.removeEventListener("puzzle-restart", handleBidRestart);
     }, []);
 
+    /* ---------- Leaderboard Fetch ---------- */
+    useEffect(() => {
+        if (!showLeaderboard || !walletAddress) return;
+        const fetchLB = async () => {
+            setLoadingLB(true);
+            try {
+                const res = await fetch("/api/leaderboard", {
+                    headers: { "x-wallet-address": walletAddress },
+                    cache: "no-store",
+                });
+                if (!res.ok) throw new Error("Failed");
+                const data = await res.json();
+                setLeaderboardData(data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoadingLB(false);
+            }
+        };
+        fetchLB();
+        const int = setInterval(fetchLB, 30000);
+        return () => clearInterval(int);
+    }, [showLeaderboard, walletAddress]);
 
 
     /* -------------------------------------------------------------
@@ -325,6 +343,76 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 </div>
             )}
 
+            {/* LEADERBOARD MODAL */}
+            <Modal
+                title="Leaderboard"
+                show={showLeaderboard}
+                onClose={() => setShowLeaderboard(false)}
+                variant="leaderboard"
+            >
+                {loadingLB ? (
+                    <p className="text-center py-8 text-gray-400">Loading...</p>
+                ) : (
+                    <>
+                        {/* Your Rank */}
+                        {leaderboardData?.myRank && (
+                            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-5 rounded-xl mb-6 text-white shadow-lg">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-16 h-16 bg-white/30 rounded-full flex items-center justify-center text-3xl font-bold">
+                                            #{leaderboardData.myRank.rank}
+                                        </div>
+                                        <div>
+                                            <p className="text-2xl font-bold">YOU</p>
+                                            <p className="font-mono text-sm">{leaderboardData.myRank.wallet}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-2xl">{leaderboardData.myRank.wins} Wins</p>
+                                        <p className="text-lg">{leaderboardData.myRank.totalBid.toFixed(3)} SOL</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Global List */}
+                        <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+                            {leaderboardData?.leaderboard?.length === 0 ? (
+                                <p className="text-center text-gray-400 py-8">No wins yet</p>
+                            ) : (
+                                leaderboardData?.leaderboard?.map((e: any) => (
+                                    <div
+                                        key={e.rank}
+                                        className={`flex justify-between items-center p-3 rounded-lg transition ${e.isMe ? "bg-yellow-900/40 border-l-4 border-yellow-400" : "bg-slate-800"
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div
+                                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${e.rank === 1
+                                                    ? "bg-yellow-400 text-black"
+                                                    : e.rank === 2
+                                                        ? "bg-gray-400 text-black"
+                                                        : e.rank === 3
+                                                            ? "bg-orange-600 text-white"
+                                                            : "bg-slate-600 text-white"
+                                                    }`}
+                                            >
+                                                {e.rank}
+                                            </div>
+                                            <span className="font-mono text-sm truncate max-w-[120px]">{e.wallet}</span>
+                                        </div>
+                                        <div className="text-right text-sm">
+                                            <div className="font-bold">{e.wins} Wins</div>
+                                            <div className="text-green-400">{e.totalBid.toFixed(3)} SOL</div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <p className="text-center text-xs text-gray-500 mt-6">Updates every 30s</p>
+                    </>
+                )}
+            </Modal>
 
             {/* ----- Difficulty picker (only when wallet connected) ----- */}
             {connected && (
@@ -402,7 +490,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     </div>
                 )}
 
-                {/* ---------- MODALS (single reusable component) ---------- */}
+                {/* ---------- MODALS ---------- */}
 
                 {/* Bid-confirmation → Start */}
                 <Modal
@@ -411,28 +499,21 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     show={showStartModal}
                     onConfirm={handleStartGame}
                     confirmText="Start Game"
-                    variant="start" onClose={function (): void {
-                        throw new Error("Function not implemented.");
-                    }} />
+                    variant="start"
+                />
 
                 {/* Victory */}
                 <Modal
                     title="Puzzle Victory"
                     message={`Won in ${moveCount} moves, ${time}s`}
                     show={isWin}
-                    onClose={() => {
-                        setIsWin(false);
-                        handleResetToDefault();
-                    }}
                     onConfirm={() => router.push("/reward")}
+                    onClose={handleResetToDefault}
                     confirmText="Claim Reward"
                     variant="success"
                 >
-                    <p className="text-2xl font-bold text-green-400">
+                    <p className="text-3xl font-bold text-green-400 text-center mt-4">
                         {(currentBid * rewardMultiplier).toFixed(2)} SOL
-                    </p>
-                    <p className="text-sm text-gray-300 mt-1">
-                        {difficulty.toUpperCase()} Difficulty
                     </p>
                 </Modal>
 
@@ -441,10 +522,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     title="Game Over"
                     message="Out of moves or time!"
                     show={isGameOver}
-                    onClose={() => {
-                        setIsGameOver(false);
-                        handleResetToDefault();
-                    }}
+                    onClose={handleResetToDefault}
                     singleButton={true}
                 />
             </div>
