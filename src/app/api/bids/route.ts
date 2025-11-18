@@ -4,7 +4,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 
 export const dynamic = "force-dynamic";
 
-// GET — Fetch recent successful bids
+// GET — Recent successful bids (for leaderboard)
 export async function GET() {
   try {
     const bids = await prisma.bid.findMany({
@@ -31,6 +31,10 @@ export async function GET() {
         hour: "2-digit",
         minute: "2-digit",
       }),
+      date: b.createdAt.toLocaleDateString("en-NG", {
+        day: "numeric",
+        month: "short",
+      }),
       gameId: b.gameResult.gameId,
     }));
 
@@ -46,35 +50,38 @@ export async function POST(req: Request) {
   try {
     const { walletAddress, amount } = await req.json();
 
-    if (!walletAddress || !amount) {
-      return NextResponse.json({ error: "Missing walletAddress or amount" }, { status: 400 });
+    if (!walletAddress || !amount || amount <= 0) {
+      return NextResponse.json(
+        { error: "Invalid walletAddress or amount" },
+        { status: 400 }
+      );
     }
 
-    // Auto-create user if not found
+    // Auto-create user if not exists
     const user = await prisma.user.upsert({
       where: { walletAddress },
       update: {},
       create: { walletAddress },
     });
 
-    // 1. Create GameResult with ALL required fields
+    // Create GameResult first
     const gameResult = await prisma.gameResult.create({
       data: {
         gameId: crypto.randomUUID(),
         userId: user.id,
         moves: 0,
         score: 0,
-        bidding: new Decimal(amount),
+        bidding: new Decimal(amount.toString()),
         won: false,
         difficulty: "medium",
       },
     });
 
-    // 2. Create Bid linked to GameResult
+    // Create Bid
     const newBid = await prisma.bid.create({
       data: {
-        amount: new Decimal(amount),
-        status: "SUCCESS", // Changed to string for no errors
+        amount: new Decimal(amount.toString()),
+        status: "SUCCESS",
         userId: user.id,
         gameResultId: gameResult.gameId,
       },
@@ -100,7 +107,10 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Error creating bid:", error);
     return NextResponse.json(
-      { error: "Failed to create bid", details: error.message },
+      {
+        error: "Failed to create bid",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      },
       { status: 500 }
     );
   }

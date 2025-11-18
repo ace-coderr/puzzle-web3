@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -54,34 +53,21 @@ export default function RewardPage() {
       alert("Wallet not connected!");
       return;
     }
-
     setClaiming(gameId);
-
     try {
       const res = await fetch("/api/rewards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          gameId: gameId,
+          gameId,
           walletAddress: publicKey.toBase58(),
         }),
       });
-
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Claim failed");
 
-      if (!res.ok) {
-        throw new Error(data.error || "Claim failed");
-      }
-
-      setModal({
-        open: true,
-        amount: data.amount,
-        tx: data.txSignature,
-      });
-
-      // Refresh history after successful claim
-      fetchHistory();
-
+      setModal({ open: true, amount: data.amount, tx: data.txSignature });
+      fetchHistory(); // refresh instantly
     } catch (err: any) {
       alert("Claim failed: " + err.message);
     } finally {
@@ -106,17 +92,20 @@ export default function RewardPage() {
     );
   }
 
+  // FILTERS
   const unclaimed = results.filter((r) => r.won && r.reward && !r.claimed);
-  const history = results.filter((r) => r.claimed || !r.won);
+  const wins = results.filter((r) => r.won && r.claimed);
+  const losses = results.filter((r) => !r.won);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 text-white p-6">
-      <div className="max-w-2xl mx-auto space-y-10">
-        {/* Unclaimed Rewards */}
+      <div className="max-w-2xl mx-auto space-y-12">
+
+        {/* 1. UNCLAIMED REWARDS */}
         {unclaimed.length > 0 && (
           <section className="bg-gradient-to-r from-emerald-900/20 to-teal-900/20 p-6 rounded-2xl border border-emerald-700/50 shadow-xl">
             <h2 className="text-2xl font-bold mb-5 text-emerald-400">
-              Unclaimed Rewards
+              Unclaimed Rewards ({unclaimed.length})
             </h2>
             <div className="space-y-4">
               {unclaimed.map((r) => (
@@ -139,8 +128,8 @@ export default function RewardPage() {
                     onClick={() => handleClaim(r.id)}
                     disabled={claiming === r.id}
                     className={`min-w-[120px] font-bold transition-all ${claiming === r.id
-                      ? "bg-gray-600 cursor-not-allowed"
-                      : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:scale-105"
+                        ? "bg-gray-600 cursor-not-allowed"
+                        : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:scale-105"
                       }`}
                   >
                     {claiming === r.id ? (
@@ -158,40 +147,31 @@ export default function RewardPage() {
           </section>
         )}
 
-        {/* Game History */}
+        {/* 2. WINS (Claimed) */}
         <section>
-          <h2 className="text-2xl font-bold mb-5 text-gray-200">Game History</h2>
-          {history.length === 0 ? (
-            <div className="text-center py-16 bg-slate-800/50 rounded-2xl border border-slate-700">
-              <p className="text-gray-400 text-lg">No games played yet.</p>
-              <Button onClick={() => router.push("/")} className="mt-6 bg-blue-600 hover:bg-blue-700">
-                Play Now
-              </Button>
+          <h2 className="text-2xl font-bold mb-5 text-emerald-400">
+            Wins ({wins.length})
+          </h2>
+          {wins.length === 0 ? (
+            <div className="text-center py-12 bg-slate-800/50 rounded-2xl border border-slate-700 text-gray-400">
+              No wins claimed yet. Keep playing!
             </div>
           ) : (
             <div className="space-y-3">
-              {history.map((r) => (
-                <div
-                  key={r.id}
-                  className={`p-5 rounded-xl border transition-all backdrop-blur-sm ${r.won ? "bg-emerald-900/30 border-emerald-700/50" : "bg-red-900/30 border-red-700/50"
-                    }`}
-                >
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="flex-1">
-                      <p className={`text-xl font-bold ${r.won ? "text-emerald-400" : "text-red-400"}`}>
-                        {r.won ? "WIN" : "LOSE"}
-                      </p>
+              {wins.map((r) => (
+                <div key={r.id} className="p-5 rounded-xl border bg-emerald-900/30 border-emerald-700/50 backdrop-blur-sm">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-xl font-bold text-emerald-400">WIN</p>
                       <p className="text-sm text-gray-300 mt-1">
                         <span className="font-mono">{r.moves}</span> moves • {r.time}s • Bid: {r.bidding.toFixed(3)} SOL
                       </p>
-                      {r.won && r.reward && (
-                        <p className="text-xs text-emerald-300 mt-1">
-                          Reward: {r.reward.toFixed(3)} SOL {r.claimed ? "• Claimed" : ""}
-                        </p>
-                      )}
+                      <p className="text-xs text-emerald-300 mt-1">
+                        Reward: {r.reward!.toFixed(3)} SOL • Claimed
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-500 self-end sm:self-center">
-                      {new Date(r.createdAt).toLocaleString()}
+                    <p className="text-xs text-gray-500">
+                      {new Date(r.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -199,9 +179,49 @@ export default function RewardPage() {
             </div>
           )}
         </section>
+
+        {/* 3. LOSSES */}
+        <section>
+          <h2 className="text-2xl font-bold mb-5 text-red-400">
+            Losses ({losses.length})
+          </h2>
+          {losses.length === 0 ? (
+            <div className="text-center py-12 bg-slate-800/50 rounded-2xl border border-slate-700 text-gray-400">
+              No losses yet. You're unstoppable!
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {losses.map((r) => (
+                <div key={r.id} className="p-5 rounded-xl border bg-red-900/30 border-red-700/50 backdrop-blur-sm">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-xl font-bold text-red-400">LOSE</p>
+                      <p className="text-sm text-gray-300 mt-1">
+                        <span className="font-mono">{r.moves}</span> moves • {r.time}s • Bid: {r.bidding.toFixed(3)} SOL
+                      </p>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {new Date(r.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Empty State - No Games */}
+        {results.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-gray-400 text-lg mb-6">No games played yet.</p>
+            <Button onClick={() => router.push("/")} className="bg-blue-600 hover:bg-blue-700">
+              Play Now
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Success Modal – Only X button */}
+      {/* Success Modal */}
       <Modal
         title="Reward Claimed!"
         show={modal.open}
