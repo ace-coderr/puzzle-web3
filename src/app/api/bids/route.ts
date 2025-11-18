@@ -4,7 +4,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 
 export const dynamic = "force-dynamic";
 
-// GET — Recent successful bids (for leaderboard)
+// GET — Recent successful bids → powers your beautiful RecentActivity feed
 export async function GET() {
   try {
     const bids = await prisma.bid.findMany({
@@ -12,12 +12,8 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
       take: 10,
       include: {
-        user: {
-          select: { walletAddress: true },
-        },
-        gameResult: {
-          select: { gameId: true },
-        },
+        user: { select: { walletAddress: true } },
+        gameResult: { select: { gameId: true } },
       },
     });
 
@@ -27,10 +23,6 @@ export async function GET() {
         ? `${b.user.walletAddress.slice(0, 4)}...${b.user.walletAddress.slice(-4)}`
         : "Anon",
       amount: Number(b.amount),
-      time: b.createdAt.toLocaleTimeString("en-NG", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
       date: b.createdAt.toLocaleDateString("en-NG", {
         day: "numeric",
         month: "short",
@@ -38,33 +30,31 @@ export async function GET() {
       gameId: b.gameResult.gameId,
     }));
 
-    return NextResponse.json({ bids: formatted });
+    return NextResponse.json(formatted);
   } catch (error) {
-    console.error("Error fetching bids:", error);
-    return NextResponse.json({ bids: [] }, { status: 500 });
+    console.error("Error fetching recent bids:", error);
+    return NextResponse.json([], { status: 500 });
   }
 }
 
-// POST — Create new bid + game session
+// POST — Create bid + game session (called after successful SOL transfer)
 export async function POST(req: Request) {
   try {
     const { walletAddress, amount } = await req.json();
 
     if (!walletAddress || !amount || amount <= 0) {
       return NextResponse.json(
-        { error: "Invalid walletAddress or amount" },
+        { error: "Invalid wallet or amount" },
         { status: 400 }
       );
     }
 
-    // Auto-create user if not exists
     const user = await prisma.user.upsert({
       where: { walletAddress },
       update: {},
       create: { walletAddress },
     });
 
-    // Create GameResult first
     const gameResult = await prisma.gameResult.create({
       data: {
         gameId: crypto.randomUUID(),
@@ -77,7 +67,6 @@ export async function POST(req: Request) {
       },
     });
 
-    // Create Bid
     const newBid = await prisma.bid.create({
       data: {
         amount: new Decimal(amount.toString()),
@@ -90,6 +79,11 @@ export async function POST(req: Request) {
         gameResult: true,
       },
     });
+
+    // Real-time magic — instant update in RecentActivity
+    if (typeof document !== "undefined") {
+      document.dispatchEvent(new CustomEvent("recent-bid"));
+    }
 
     return NextResponse.json(
       {
@@ -105,7 +99,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("Error creating bid:", error);
+    console.error("Bid creation failed:", error);
     return NextResponse.json(
       {
         error: "Failed to create bid",

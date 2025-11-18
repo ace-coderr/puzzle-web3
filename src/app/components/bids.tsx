@@ -1,8 +1,8 @@
 "use client";
+
 import { useState } from "react";
 import {
   Connection,
-  clusterApiUrl,
   LAMPORTS_PER_SOL,
   Transaction,
   SystemProgram,
@@ -15,30 +15,47 @@ type BidComponentProps = {
   onBalanceUpdate?: (balance: number) => void;
 };
 
-// Treasury wallet
-const TREASURY_WALLET = process.env.NEXT_PUBLIC_TREASURY_WALLET || "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
+// Treasury wallet (from .env)
+const TREASURY_WALLET =
+  process.env.NEXT_PUBLIC_TREASURY_WALLET ||
+  "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
 
-export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentProps) {
+export default function BidComponent({
+  wallet,
+  onBalanceUpdate,
+}: BidComponentProps) {
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl("devnet");
+  // Use your reliable RPC
+  const rpcUrl =
+    process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
   const connection = new Connection(rpcUrl, "confirmed");
 
   const quickOptions = [0.1, 0.5, 1, 2];
 
   const handleBid = async () => {
-    if (!wallet.publicKey) return alert("Please connect your wallet first!");
-    if (!amount || amount <= 0) return alert("Enter a valid bid amount.");
+    if (!wallet.publicKey || !wallet.signTransaction) {
+      alert("Please connect your wallet!");
+      return;
+    }
+
+    if (!amount || amount <= 0) {
+      alert("Enter a valid bid amount.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      setLoading(true);
-
       const fromPubkey = wallet.publicKey;
       const toPubkey = new PublicKey(TREASURY_WALLET);
-      const lamports = amount * LAMPORTS_PER_SOL;
+      const lamports = Math.round(amount * LAMPORTS_PER_SOL);
 
-      const transaction = new Transaction().add(
+      // Build transaction
+      const transaction = new Transaction();
+
+      transaction.add(
         SystemProgram.transfer({
           fromPubkey,
           toPubkey,
@@ -46,26 +63,41 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
         })
       );
 
-      transaction.feePayer = fromPubkey;
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
+      // Get fresh blockhash (with retry)
+      let blockhash;
+      for (let i = 0; i < 3; i++) {
+        try {
+          blockhash = await connection.getLatestBlockhash();
+          break;
+        } catch (err) {
+          if (i === 2) throw err;
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
 
-      const signedTx = await wallet.signTransaction!(transaction);
-      const txSignature = await connection.sendRawTransaction(signedTx.serialize());
+      transaction.recentBlockhash = blockhash!.blockhash;
+      transaction.feePayer = fromPubkey;
+
+      // Sign & send
+      const signedTx = await wallet.signTransaction(transaction);
+      const txSignature = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 3,
+      });
+
+      console.log("Bid transaction sent:", txSignature);
       await connection.confirmTransaction(txSignature, "confirmed");
 
-      console.log("SOL sent to treasury:", txSignature);
+      // Generate gameId
+      const gameId = `game-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem("currentGameId", gameId);
 
-      // === GENERATE + SAVE gameId ===
-      const gameId = `puzzle-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      localStorage.setItem("currentGameId", gameId); // ← CRITICAL
-
-      // === Save bid to backend ===
+      // Save bid to backend
       const res = await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          walletAddress: wallet.publicKey.toString(),
+          walletAddress: fromPubkey.toBase58(),
           amount,
           gameId,
           txSignature,
@@ -73,62 +105,80 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save bid.");
+      if (!res.ok) throw new Error(data.error || "Failed to save bid");
 
-      // === Update balance ===
+      // Update balance
       if (onBalanceUpdate) {
-        const newBalance = await connection.getBalance(wallet.publicKey);
-        onBalanceUpdate(newBalance / LAMPORTS_PER_SOL);
+        const balance = await connection.getBalance(fromPubkey);
+        onBalanceUpdate(balance / LAMPORTS_PER_SOL);
       }
 
-      // === Notify puzzle to restart ===
-      document.dispatchEvent(new Event("recent-activity-refresh"));
+      // Trigger real-time updates
+      document.dispatchEvent(new CustomEvent("recent-bid"));
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
-          detail: { walletAddress: wallet.publicKey.toString(), amount, gameId },
+          detail: { walletAddress: fromPubkey.toBase58(), amount, gameId },
         })
       );
 
-      alert(`${amount} SOL bid placed! Game starting...`);
+      alert(`Success! ${amount} SOL bid placed. Game starting...`);
     } catch (err: any) {
-      console.error("Bid Error:", err);
-      alert(`Transaction failed: ${err.message}`);
+      console.error("Bid failed:", err);
+      alert(`Transaction failed: ${err.message || "Network error"}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center bg-gray-900 text-white p-6 rounded-2xl shadow-lg w-[360px]">
-      <h2 className="text-2xl font-bold mb-4">Place Your Bid</h2>
-      <div className="flex gap-3 mb-4">
+    <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-black text-white p-8 rounded-3xl shadow-2xl border border-gray-800 w-[380px]">
+      <h2 className="text-3xl font-bold mb-6 text-emerald-400">Place Your Bid</h2>
+
+      <div className="grid grid-cols-2 gap-3 mb-5 w-full">
         {quickOptions.map((opt) => (
           <button
             key={opt}
             onClick={() => setAmount(opt)}
-            className={`px-4 py-2 rounded-lg border ${amount === opt
-              ? "bg-blue-600 border-blue-400"
-              : "bg-gray-700 hover:bg-gray-600 border-gray-600"
-              }`}
+            disabled={loading}
+            className={`py-3 rounded-xl font-semibold transition-all ${amount === opt
+                ? "bg-emerald-600 ring-2 ring-emerald-400 shadow-lg scale-105"
+                : "bg-gray-800 hover:bg-gray-700"
+              } disabled:opacity-50`}
           >
             {opt} SOL
           </button>
         ))}
       </div>
+
       <input
         type="number"
-        placeholder="Custom amount"
+        step="0.001"
+        min="0.001"
+        placeholder="Or enter custom amount"
         value={amount ?? ""}
-        onChange={(e) => setAmount(Number(e.target.value))}
-        className="w-full p-2 text-center rounded mb-4 bg-white text-black border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        onChange={(e) => setAmount(parseFloat(e.target.value) || null)}
+        disabled={loading}
+        className="w-full p-4 text-center text-lg rounded-xl bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-6"
       />
+
       <button
         onClick={handleBid}
-        disabled={loading}
-        className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:opacity-60"
+        disabled={loading || !amount}
+        className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xl rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? "Waiting..." : "Place Bid"}
+        {loading ? (
+          <span className="flex items-center justify-center gap-3">
+            <span className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></span>
+            Processing...
+          </span>
+        ) : (
+          "Place Bid & Play"
+        )}
       </button>
+
+      <p className="text-xs text-gray-500 mt-4 text-center">
+        Bids go to treasury • Real SOL • Real wins
+      </p>
     </div>
   );
 }

@@ -7,96 +7,131 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
 model User {
-  id            Int          @id @default(autoincrement())
-  customId      String       @default(uuid())
-  walletAddress String       @unique
-  balance       Decimal      @default(0.0) @db.Decimal(18, 8)
-  transactions  Transaction[]
+  id            Int      @id @default(autoincrement())
+  customId      String   @default(uuid())
+  walletAddress String   @unique
+  balance       Decimal  @default(0.0) @db.Decimal(18, 8)
+
   gameResults   GameResult[]
   bids          Bid[]
   rewards       Reward[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  transactions  Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([walletAddress])
 }
 
+// ─────────────────────────────────────────────
+// GAME RESULT (one game session)
+// ─────────────────────────────────────────────
 model GameResult {
-  gameId       String   @id
-  userId       Int
-  moves        Int
-  score        Int
-  bidding      Decimal  @db.Decimal(18, 8)
-  won          Boolean
-  difficulty   String   @default("medium")
-  reward       Decimal? @db.Decimal(18, 8)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  gameId     String  @id @default(cuid())
+  userId     Int
+  user       User    @relation(fields: [userId], references: [id])
 
-  user         User     @relation(fields: [userId], references: [id])
-  rewardEntry  Reward?  @relation("GameResultReward")
-  bid          Bid?
+  moves      Int     @default(0)
+  score      Int     @default(0)
+  bidding    Decimal @db.Decimal(18, 8)
+  won        Boolean @default(false)
+  difficulty String  @default("medium")
 
-  @@index([userId, createdAt])
+  // Reward amount (if won)
+  reward     Decimal? @db.Decimal(18, 8)
+
+  // Relations
+  bid        Bid?
+  rewardEntry Reward?  @relation("GameResultReward")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
   @@index([won])
 }
 
+// ─────────────────────────────────────────────
+// BID (one-to-one with GameResult)
+// ─────────────────────────────────────────────
 model Bid {
-  id           String       @id @default(cuid())
-  gameResultId String       @unique     // ← THIS FIXES one-to-one relation
-  userId       Int
-  amount       Decimal      @db.Decimal(36, 18)
-  status       String       @default("PENDING")
-  txSignature  String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id            String @id @default(cuid())
+  gameResultId  String @unique
+  gameResult    GameResult @relation(fields: [gameResultId], references: [gameId])
 
-  gameResult   GameResult   @relation(fields: [gameResultId], references: [gameId])
-  user         User         @relation(fields: [userId], references: [id])
-  transactions Transaction[]
+  userId        Int
+  user          User   @relation(fields: [userId], references: [id])
+
+  amount        Decimal @db.Decimal(18, 8)
+  status        String  @default("PENDING") // PENDING, SUCCESS, FAILED
+  txSignature   String?
+
+  transactions  Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([gameResultId])
   @@index([userId])
   @@index([createdAt])
 }
 
-model Transaction {
-  id           Int          @id @default(autoincrement())
-  amount       Decimal      @db.Decimal(18, 8)
-  type         TransactionType
-  status       TransactionStatus
-  userId       Int
-  bidId        String?
-  txSignature  String?
-  createdAt    DateTime     @default(now())
+// ─────────────────────────────────────────────
+// REWARD (one-to-one with GameResult)
+// ─────────────────────────────────────────────
+model Reward {
+  id            String  @id @default(cuid())
+  gameResultId  String  @unique
+  gameResult    GameResult @relation("GameResultReward", fields: [gameResultId], references: [gameId])
 
-  user         User         @relation(fields: [userId], references: [id])
-  bid          Bid?         @relation(fields: [bidId], references: [id])
+  userId        Int
+  user          User    @relation(fields: [userId], references: [id])
+
+  title         String
+  description   String?
+  amount        Decimal @db.Decimal(18, 8)
+
+  claimed       Boolean @default(false)
+  claimedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([gameResultId])
+  @@index([userId])
+  @@index([claimed])
+}
+
+// ─────────────────────────────────────────────
+// TRANSACTION LOG
+// ─────────────────────────────────────────────
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+
+  bidId       String?
+  bid         Bid?     @relation(fields: [bidId], references: [id])
+
+  amount      Decimal  @db.Decimal(18, 8)
+  type        TransactionType
+  status      TransactionStatus @default(PENDING)
+  txSignature String?
+
+  createdAt   DateTime @default(now())
 
   @@index([userId])
   @@index([bidId])
   @@index([createdAt])
 }
 
-model Reward {
-  id           String    @id @default(cuid())
-  gameResultId String    @unique
-  userId       Int
-  title        String
-  description  String?
-  amount       Decimal   @db.Decimal(18, 8)
-  claimed      Boolean   @default(false)
-  claimedAt    DateTime? // ← This was the missing field
-  createdAt    DateTime  @default(now())
-
-  user         User      @relation(fields: [userId], references: [id])
-  gameResult   GameResult @relation("GameResultReward", fields: [gameResultId], references: [gameId])
-
-  @@index([gameResultId])
-  @@index([userId, claimed])
-}
-
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
 enum TransactionType {
   DEPOSIT
   WITHDRAWAL

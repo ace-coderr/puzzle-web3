@@ -1,62 +1,86 @@
+// components/RecentActivity.tsx
 "use client";
-
 import { useEffect, useState } from "react";
 
-export default function RecentActivity() {
-    const [bids, setBids] = useState<any[]>([]);
+type Bid = {
+    id: string;
+    wallet: string;
+    amount: number;
+    date: string;
+};
 
-    const fetchRecentBids = async () => {
+export default function RecentActivity() {
+    const [bids, setBids] = useState<Bid[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchBids = async () => {
         try {
-            const res = await fetch("/api/recent-bids");
-            if (!res.ok) throw new Error("Failed to fetch bids");
+            const res = await fetch("/api/bids");
+            if (!res.ok) throw new Error();
             const data = await res.json();
-            setBids(data);
+            // If API returns { bids: [...] }, use data.bids; if array → data
+            setBids(Array.isArray(data) ? data : data.bids || []);
         } catch (err) {
-            console.error("Error loading bids:", err);
+            console.error("Failed to load recent bids");
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchRecentBids();
-        const refreshHandler = () => fetchRecentBids();
-        document.addEventListener("recent-activity-refresh", refreshHandler);
-        return () => document.removeEventListener("recent-activity-refresh", refreshHandler);
+        fetchBids();
+        const handler = () => fetchBids();
+        document.addEventListener("recent-bid", handler);
+        return () => document.removeEventListener("recent-bid", handler);
     }, []);
 
+    if (loading) {
+        return (
+            <div className="bg-gray-900/90 backdrop-blur-sm rounded-2xl p-6 shadow-2xl border border-gray-800 w-full max-w-md">
+                <p className="text-center text-gray-400">Loading activity...</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="bg-gray-900 text-white rounded-xl p-4 shadow-lg w-full max-w-sm">
-            <h2 className="text-center font-bold mb-3">Recent Activity</h2>
-            {bids.length === 0 ? (
-                <p className="text-gray-400 text-center">No recent bids yet.</p>
-            ) : (
-                <ul className="space-y-3">
-                    {bids.map((bid) => (
-                        <li
-                            key={bid.id}
-                            className="border border-gray-700 p-3 rounded-lg bg-gray-800"
-                        >
-                            <p>💰 <strong>{Number(bid.amount)} SOL</strong></p>
-                            <p>Status: <span className={bid.status === "SUCCESS" ? "text-green-400" : "text-red-400"}>{bid.status}</span></p>
+        <div className="bg-gray-900/90 backdrop-blur-sm rounded-2xl p-6 shadow-2xl border border-gray-800 w-full max-w-md">
+            <h2 className="text-xl font-bold text-center mb-4 text-emerald-400 tracking-wider">
+                Recent Activity
+            </h2>
 
-                            {/* ✅ Add Solana Explorer link here */}
-                            {bid.transactions?.[0]?.txSignature && (
-                                <a
-                                    href={`https://explorer.solana.com/tx/${bid.transactions[0].txSignature}?cluster=devnet`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-400 underline text-sm"
-                                >
-                                    View on Solana Explorer
-                                </a>
-                            )}
+            <div className="bg-black/40 rounded-xl p-4 font-mono text-sm">
+                {bids.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">No bids yet. Be the first!</p>
+                ) : (
+                    <div className="space-y-3">
+                        {bids.map((bid) => (
+                            <div
+                                key={bid.id}
+                                className="flex justify-between items-center text-gray-300 hover:text-white transition"
+                            >
+                                {/* Wallet */}
+                                <span className="font-medium tracking-wider">
+                                    {bid.wallet}
+                                </span>
 
-                            <p className="text-xs text-gray-400">
-                                {new Date(bid.createdAt).toLocaleString()}
-                            </p>
-                        </li>
-                    ))}
-                </ul>
-            )}
+                                {/* Amount */}
+                                <span className="text-emerald-400 font-bold">
+                                    {bid.amount.toFixed(3)} SOL
+                                </span>
+
+                                {/* Date */}
+                                <span className="text-gray-500 text-xs">
+                                    {bid.date}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="mt-4 flex justify-center">
+                <div className="h-px bg-gradient-to-r from-transparent via-emerald-500 to-transparent w-32"></div>
+            </div>
         </div>
     );
 }
