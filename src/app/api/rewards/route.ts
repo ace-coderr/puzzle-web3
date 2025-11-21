@@ -8,82 +8,79 @@ import {
     Transaction,
     LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
+import { Decimal } from "@prisma/client/runtime/library";
 
-// ──────────────────────────────────────────────────────────────
-// CONFIG – Using your .env file (not .env.local)
-// ──────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────
+// CONFIG
+// ──────────────────────────────────────────────────
 const REWARD_WALLET_SECRET = process.env.REWARD_WALLET_SECRET_KEY
     ? Uint8Array.from(JSON.parse(process.env.REWARD_WALLET_SECRET_KEY))
     : null;
 
 if (!REWARD_WALLET_SECRET) {
-    throw new Error("REWARD_WALLET_SECRET_KEY is missing in .env – real claims disabled");
+    throw new Error("REWARD_WALLET_SECRET_KEY missing in .env");
 }
 
-// Use your working RPC (official Solana Devnet — always works, no key needed)
 const RPC_URL = process.env.RPC_URL || "https://api.devnet.solana.com";
-
-const connection = new Connection(RPC_URL, {
-    commitment: "confirmed",
-    confirmTransactionInitialTimeout: 60000,
-});
-
+const connection = new Connection(RPC_URL, "confirmed");
 const rewardKeypair = Keypair.fromSecretKey(REWARD_WALLET_SECRET);
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+    let txSignature: string;
+
     try {
         const { gameId, walletAddress } = await req.json();
 
         if (!gameId || !walletAddress) {
             return NextResponse.json(
-                { error: "Missing gameId or walletAddress" },
+                { error: "gameId and walletAddress required" },
                 { status: 400 }
             );
         }
 
-        // 1. Atomic DB check + mark claimed
+        // 1. Atomic check + mark claimed
         const claim = await prisma.$transaction(async (tx) => {
             const game = await tx.gameResult.findUnique({
                 where: { gameId },
                 include: { rewardEntry: true },
             });
 
-            if (!game || !game.won || !game.reward) {
-                throw new Error("No reward available");
-            }
-            if (game.rewardEntry?.claimed) {
-                throw new Error("Already claimed");
-            }
+            if (!game) throw new Error("Game not found");
+            if (!game.won) throw new Error("You didn't win this game");
+            if (!game.reward) throw new Error("No reward");
+            if (game.rewardEntry?.claimed) throw new Error("Already claimed");
 
             await tx.reward.update({
-                where: { id: game.rewardEntry!.id },
+                where: { gameResultId: gameId },
                 data: { claimed: true, claimedAt: new Date() },
             });
 
-            return { amount: game.reward };
+            return { amount: game.reward, userId: game.userId };
         });
 
-        // 2. Real SOL Transfer (Native SOL – works 100% on Devnet)
-        let txSignature: string;
-
-        const recipient = new PublicKey(walletAddress);
-        const lamports = Math.round(Number(claim.amount) * LAMPORTS_PER_SOL);
-
-        // Retry logic for blockhash (fixes "Failed to fetch" issues)
-        let latestBlockhash;
-        for (let i = 0; i < 3; i++) {
+        // 2. Get blockhash SAFELY — TypeScript now happy
+        let blockhashResponse;
+        for (let i = 0; i < 5; i++) {
             try {
-                latestBlockhash = await connection.getLatestBlockhash();
+                blockhashResponse = await connection.getLatestBlockhash();
                 break;
             } catch (err) {
-                if (i === 2) throw err;
-                await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
+                if (i === 4) throw new Error("RPC unreachable — cannot get blockhash");
+                await new Promise((r) => setTimeout(r, 1000));
             }
         }
 
-        const transaction = new Transaction().add(
+        // This line is now 100% safe now
+        const { blockhash, lastValidBlockHeight } = await blockhashResponse!;
+
+        // 3. Build & send transaction
+        const recipient = new PublicKey(walletAddress);
+        const lamports = Math.round(Number(claim.amount) * LAMPORTS_PER_SOL);
+
+        const transaction = new Transaction();
+        transaction.add(
             SystemProgram.transfer({
                 fromPubkey: rewardKeypair.publicKey,
                 toPubkey: recipient,
@@ -91,38 +88,56 @@ export async function POST(req: Request) {
             })
         );
 
-        transaction.recentBlockhash = latestBlockhash!.blockhash;
+        transaction.recentBlockhash = blockhash;
+        transaction.lastValidBlockHeight = lastValidBlockHeight; // optional but good
         transaction.feePayer = rewardKeypair.publicKey;
         transaction.sign(rewardKeypair);
 
         txSignature = await connection.sendRawTransaction(transaction.serialize(), {
             skipPreflight: false,
-            maxRetries: 3,
+            maxRetries: 5,
         });
 
-        await connection.confirmTransaction(txSignature, "confirmed");
+        await connection.confirmTransaction(
+            { signature: txSignature, blockhash, lastValidBlockHeight },
+            "confirmed"
+        );
 
-        console.log(`Reward sent! Tx: https://solana.fm/tx/${txSignature}?cluster=devnet`);
+        // 4. Update balance + log transaction
+        await prisma.$transaction(async (tx) => {
+            await tx.user.update({
+                where: { id: claim.userId },
+                data: { balance: { increment: claim.amount } },
+            });
+
+            await tx.transaction.create({
+                data: {
+                    userId: claim.userId,
+                    amount: claim.amount,
+                    type: "REWARD",
+                    status: "SUCCESS",
+                    txSignature,
+                },
+            });
+        });
 
         return NextResponse.json({
             success: true,
             amount: Number(claim.amount).toFixed(6),
             txSignature,
-            explorer: `https://solana.fm/tx/${txSignature}?cluster=devnet`,
+            explorer: `https://solana.fm/tx/${txSignature}${RPC_URL.includes("devnet") ? "?cluster=devnet" : ""}`,
         });
     } catch (error: any) {
-        console.error("Claim failed:", error);
-
-        const message = error.message || "Claim failed – please try again";
-
+        console.error("Reward claim failed:", error);
         return NextResponse.json(
             {
-                error:
-                    message.includes("claimed") || message.includes("available")
-                        ? message
-                        : "Network error – please try again in a few seconds",
+                error: error.message.includes("claimed")
+                    ? "Already claimed"
+                    : error.message.includes("win")
+                        ? "Not a winning game"
+                        : "Claim failed — try again",
             },
-            { status: message.includes("claimed") || message.includes("available") ? 400 : 500 }
+            { status: 400 }
         );
     }
 }

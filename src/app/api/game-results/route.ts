@@ -5,29 +5,23 @@ import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-// GET — fetch game history
+// GET — Fetch full game history (wins + losses + rewards)
 export async function GET(req: NextRequest) {
   try {
     const walletAddress = req.nextUrl.searchParams.get("walletAddress");
-
-    if (!walletAddress?.trim()) {
-      return NextResponse.json({ results: [] });
-    }
+    if (!walletAddress?.trim()) return NextResponse.json({ results: [] });
 
     const user = await prisma.user.findUnique({
       where: { walletAddress },
       select: { id: true },
     });
-
-    if (!user) {
-      return NextResponse.json({ results: [] });
-    }
+    if (!user) return NextResponse.json({ results: [] });
 
     const results = await prisma.gameResult.findMany({
       where: { userId: user.id },
       include: { rewardEntry: true },
       orderBy: { createdAt: "desc" },
-      take: 100, // Prevent loading thousands of games
+      take: 100,
     });
 
     return NextResponse.json({
@@ -40,7 +34,7 @@ export async function GET(req: NextRequest) {
         won: r.won,
         claimed: r.rewardEntry?.claimed ?? false,
         difficulty: r.difficulty,
-        createdAt: r.createdAt.toISOString(), // Always send ISO string
+        createdAt: r.createdAt.toISOString(),
       })),
     });
   } catch (e) {
@@ -52,11 +46,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST — save game result + auto-create Reward if won
+// POST — Save game result + auto-create Reward (atomic)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-
     const {
       walletAddress,
       moves,
@@ -68,12 +61,10 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // Strong validation
-    if (!walletAddress || typeof walletAddress !== "string") {
+    if (!walletAddress || typeof walletAddress !== "string")
       return NextResponse.json({ error: "Invalid walletAddress" }, { status: 400 });
-    }
-    if (!gameId || typeof gameId !== "string") {
+    if (!gameId || typeof gameId !== "string")
       return NextResponse.json({ error: "Invalid gameId" }, { status: 400 });
-    }
 
     const movesNum = Number(moves);
     const timeNum = Number(time);
@@ -106,7 +97,7 @@ export async function POST(req: NextRequest) {
     const multiplier = difficulty === "easy" ? 1.2 : difficulty === "medium" ? 1.5 : 2.5;
     const rewardDecimal = won === true ? new Prisma.Decimal(bidAmount * multiplier) : null;
 
-    // Atomic: save game + create Reward entry if won
+    // Atomic transaction: save game + create reward
     await prisma.$transaction(async (tx) => {
       await tx.gameResult.upsert({
         where: { gameId },
@@ -131,8 +122,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Auto-create Reward row when player wins
-      if (won === true && rewardDecimal) {
+      if (won && rewardDecimal) {
         await tx.reward.upsert({
           where: { gameResultId: gameId },
           update: {},
@@ -153,11 +143,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("POST /api/game-results error:", error);
-
     if (error instanceof SyntaxError) {
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
-
     return NextResponse.json(
       { error: "Failed to save game result" },
       { status: 500 }

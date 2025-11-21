@@ -507,13 +507,15 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     title="Puzzle Victory"
                     message={`Won in ${moveCount} moves, ${time}s`}
                     show={isWin}
-                    onConfirm={() => router.push("/reward")}
+                    onConfirm={() => router.push("/reward")} // or trigger claim
                     onClose={handleResetToDefault}
                     confirmText="Claim Reward"
                     variant="success"
+                    hideFooter={false}
+                    singleButton={true}
                 >
-                    <p className="text-3xl font-bold text-green-400 text-center mt-4">
-                        {(currentBid * rewardMultiplier).toFixed(2)} SOL
+                    <p className="text-5xl font-black text-emerald-400 drop-shadow-lg mt-6">
+                        {(currentBid * rewardMultiplier).toFixed(3)} SOL
                     </p>
                 </Modal>
 

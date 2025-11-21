@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,9 +10,8 @@ datasource db {
 
 model User {
   id            Int      @id @default(autoincrement())
-  customId      String   @default(uuid())
   walletAddress String   @unique
-  balance       Decimal  @default(0.0) @db.Decimal(18, 8)
+  balance       Decimal  @default(0.0) @db.Decimal(18, 9)
 
   gameResults   GameResult[]
   bids          Bid[]
@@ -25,99 +25,84 @@ model User {
 }
 
 model GameResult {
-  gameId     String  @id @default(cuid())
+  gameId     String   @id @default(cuid())
   userId     Int
-  user       User    @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
 
-  moves      Int     @default(0)
-  score      Int     @default(0)
-  bidding    Decimal @db.Decimal(18, 8)
-  won        Boolean @default(false)
-  difficulty String  @default("medium")
+  moves      Int      @default(0)
+  score      Int      @default(0)
+  bidding    Decimal  @db.Decimal(18, 9)
+  won        Boolean  @default(false)
+  difficulty String   @default("medium")
+  reward     Decimal? @db.Decimal(18, 9)
 
-  reward     Decimal? @db.Decimal(18, 8)
-
-  bid         Bid?
-  rewardEntry Reward? @relation("GameResultReward")
+  bid        Bid?
+  rewardEntry Reward? @relation("GameResultToReward")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([createdAt])
-  @@index([won])
 }
 
 model Bid {
-  id            String @id @default(cuid())
-  gameResultId  String @unique
-  gameResult    GameResult @relation(fields: [gameResultId], references: [gameId])
+  id           String   @id @default(cuid())
+  gameResultId String   @unique
+  gameResult   GameResult @relation(fields: [gameResultId], references: [gameId])
 
-  userId        Int
-  user          User   @relation(fields: [userId], references: [id])
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
 
-  amount        Decimal @db.Decimal(18, 8)
-  status        String  @default("PENDING")
-  txSignature   String?
+  amount       Decimal  @db.Decimal(18, 9)
+  status       String   @default("SUCCESS")
+  txSignature  String?
 
-  transactions  Transaction[]
+  transactions Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([gameResultId])
   @@index([userId])
-  @@index([createdAt])
 }
 
 model Reward {
-  id            String  @id @default(cuid())
-  gameResultId  String  @unique
-  gameResult    GameResult @relation("GameResultReward", fields: [gameResultId], references: [gameId])
+  id           String   @id @default(cuid())
+  gameResultId String   @unique
+  gameResult   GameResult @relation("GameResultToReward", fields: [gameResultId], references: [gameId])
 
-  userId        Int
-  user          User    @relation(fields: [userId], references: [id])
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
 
-  title         String
-  description   String?
-  amount        Decimal @db.Decimal(18, 8)
+  title        String
+  description  String?
+  amount       Decimal  @db.Decimal(18, 9)
 
-  claimed       Boolean @default(false)
-  claimedAt     DateTime?
+  claimed      Boolean  @default(false)
+  claimedAt    DateTime?
 
   createdAt DateTime @default(now())
 
   @@index([gameResultId])
-  @@index([userId])
-  @@index([claimed])
+  @@index([userId, claimed])
 }
 
 model Transaction {
   id          Int      @id @default(autoincrement())
   userId      Int
-  bidId       String? // <-- FIXED (Bid.id is STRING)
-  amount      Decimal   @db.Decimal(65, 30)
-  type        String
-  status      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  bidId       String?
+  bid         Bid?     @relation(fields: [bidId], references: [id])
+
+  amount      Decimal  @db.Decimal(18, 9)
+  type        String   // ← CHANGED TO String (BID, REWARD)
+  status      String   // ← CHANGED TO String (PENDING, SUCCESS, FAILED)
   txSignature String?
+
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
-  bid  Bid? @relation(fields: [bidId], references: [id])
-}
-
-enum TransactionType {
-  DEPOSIT
-  WITHDRAWAL
-  BID
-  WIN
-  LOSE
-  REWARD
-}
-
-enum TransactionStatus {
-  PENDING
-  SUCCESS
-  FAILED
+  @@index([userId])
+  @@index([bidId])
 }
