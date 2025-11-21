@@ -4,7 +4,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 
 export const dynamic = "force-dynamic";
 
-// GET — Recent successful bids → powers your beautiful RecentActivity feed
+// GET — Recent successful bids
 export async function GET() {
   try {
     const bids = await prisma.bid.findMany({
@@ -37,74 +37,78 @@ export async function GET() {
   }
 }
 
-// POST — Create bid + game session (called after successful SOL transfer)
+// POST — Create bid + game session
 export async function POST(req: Request) {
   try {
-    const { walletAddress, amount } = await req.json();
+    const { walletAddress, amount, gameId, txSignature } = await req.json();
 
-    if (!walletAddress || !amount || amount <= 0) {
+    if (!walletAddress || !amount || !gameId || !txSignature) {
       return NextResponse.json(
-        { error: "Invalid wallet or amount" },
+        { error: "Missing walletAddress, amount, gameId or txSignature" },
         { status: 400 }
       );
     }
 
+    // Create or fetch user
     const user = await prisma.user.upsert({
       where: { walletAddress },
       update: {},
       create: { walletAddress },
     });
 
+    // Create GameResult
     const gameResult = await prisma.gameResult.create({
       data: {
-        gameId: crypto.randomUUID(),
+        gameId,
         userId: user.id,
         moves: 0,
         score: 0,
-        bidding: new Decimal(amount.toString()),
+        bidding: new Decimal(amount),
         won: false,
         difficulty: "medium",
       },
     });
 
-    const newBid = await prisma.bid.create({
+    // Create Bid linked to game session
+    const bid = await prisma.bid.create({
       data: {
-        amount: new Decimal(amount.toString()),
+        amount: new Decimal(amount),
         status: "SUCCESS",
         userId: user.id,
         gameResultId: gameResult.gameId,
       },
-      include: {
-        user: { select: { walletAddress: true } },
-        gameResult: true,
-      },
     });
 
-    // Real-time magic — instant update in RecentActivity
-    if (typeof document !== "undefined") {
-      document.dispatchEvent(new CustomEvent("recent-bid"));
-    }
+    // Create Transaction record
+    const tx = await prisma.transaction.create({
+      data: {
+        userId: user.id,
+        bidId: bid.id,
+        amount: new Decimal(amount),
+        type: "BID",
+        status: "SUCCESS",
+        txSignature,
+      },
+    });
 
     return NextResponse.json(
       {
         bid: {
-          id: newBid.id,
-          amount: Number(newBid.amount),
-          status: newBid.status,
-          gameId: newBid.gameResult.gameId,
-          walletAddress: newBid.user.walletAddress,
+          id: bid.id,
+          amount: Number(bid.amount),
+          status: bid.status,
+          gameId: gameResult.gameId,
+          walletAddress: user.walletAddress,
         },
-        message: "Bid created successfully",
+        transaction: tx,
+        message: "Bid + Transaction created successfully",
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    console.error("Bid creation failed:", error);
+  } catch (err: any) {
+    console.error("Error creating bid:", err);
     return NextResponse.json(
-      {
-        error: "Failed to create bid",
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
-      },
+      { error: err.message || "Failed to create bid" },
       { status: 500 }
     );
   }

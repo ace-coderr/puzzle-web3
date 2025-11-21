@@ -7,9 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─────────────────────────────────────────────
-// USER
-// ─────────────────────────────────────────────
 model User {
   id            Int      @id @default(autoincrement())
   customId      String   @default(uuid())
@@ -27,9 +24,6 @@ model User {
   @@index([walletAddress])
 }
 
-// ─────────────────────────────────────────────
-// GAME RESULT (one game session)
-// ─────────────────────────────────────────────
 model GameResult {
   gameId     String  @id @default(cuid())
   userId     Int
@@ -41,12 +35,10 @@ model GameResult {
   won        Boolean @default(false)
   difficulty String  @default("medium")
 
-  // Reward amount (if won)
   reward     Decimal? @db.Decimal(18, 8)
 
-  // Relations
-  bid        Bid?
-  rewardEntry Reward?  @relation("GameResultReward")
+  bid         Bid?
+  rewardEntry Reward? @relation("GameResultReward")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,9 +48,6 @@ model GameResult {
   @@index([won])
 }
 
-// ─────────────────────────────────────────────
-// BID (one-to-one with GameResult)
-// ─────────────────────────────────────────────
 model Bid {
   id            String @id @default(cuid())
   gameResultId  String @unique
@@ -68,7 +57,7 @@ model Bid {
   user          User   @relation(fields: [userId], references: [id])
 
   amount        Decimal @db.Decimal(18, 8)
-  status        String  @default("PENDING") // PENDING, SUCCESS, FAILED
+  status        String  @default("PENDING")
   txSignature   String?
 
   transactions  Transaction[]
@@ -81,9 +70,6 @@ model Bid {
   @@index([createdAt])
 }
 
-// ─────────────────────────────────────────────
-// REWARD (one-to-one with GameResult)
-// ─────────────────────────────────────────────
 model Reward {
   id            String  @id @default(cuid())
   gameResultId  String  @unique
@@ -106,32 +92,21 @@ model Reward {
   @@index([claimed])
 }
 
-// ─────────────────────────────────────────────
-// TRANSACTION LOG
-// ─────────────────────────────────────────────
 model Transaction {
   id          Int      @id @default(autoincrement())
   userId      Int
-  user        User     @relation(fields: [userId], references: [id])
-
-  bidId       String?
-  bid         Bid?     @relation(fields: [bidId], references: [id])
-
-  amount      Decimal  @db.Decimal(18, 8)
-  type        TransactionType
-  status      TransactionStatus @default(PENDING)
+  bidId       String? // <-- FIXED (Bid.id is STRING)
+  amount      Decimal   @db.Decimal(65, 30)
+  type        String
+  status      String
   txSignature String?
-
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  @@index([userId])
-  @@index([bidId])
-  @@index([createdAt])
+  user User @relation(fields: [userId], references: [id])
+  bid  Bid? @relation(fields: [bidId], references: [id])
 }
 
-// ─────────────────────────────────────────────
-// ENUMS
-// ─────────────────────────────────────────────
 enum TransactionType {
   DEPOSIT
   WITHDRAWAL
