@@ -247,10 +247,10 @@ export default function RewardPage() {
         hideFooter={true}
       >
         <div className="text-center py-8 space-y-6">
-          <p className="text-5xl font-black text-emerald-400">
-            +{modal.amount} SOL
+          <p className="text-6xl font-black text-emerald-400 drop-shadow-2xl">
+            +{modal.amount?.toString().replace(/\.?0+$/, '')} SOL
           </p>
-          <p className="text-xs font-mono text-gray-400 break-all max-w-xs mx-auto">
+          <p className="text-xs font-mono text-gray-400 break-all max-w-xs mx-auto align-center">
             {modal.tx}
           </p>
           <a
