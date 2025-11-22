@@ -505,11 +505,8 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                         </p>
 
                         <div className="space-y-4 text-white">
-                            <p className="text-2xl font-bold">
-                                Completed in <span className="text-emerald-400">{moveCount}</span> moves
-                            </p>
-                            <p className="text-2xl font-bold">
-                                Time: <span className="text-emerald-400">{finalTime}s</span>
+                            <p className="font-bold">
+                                Completed in <span className="text-emerald-400">{moveCount}</span> Moves - Time: <span className="text-emerald-400">{finalTime}s</span>
                             </p>
                         </div>
 
