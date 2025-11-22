@@ -60,7 +60,7 @@ export async function POST(req: Request) {
             return { amount: game.reward, userId: game.userId };
         });
 
-        // 2. Get blockhash SAFELY — TypeScript now happy
+        // 2. Get blockhash SAFELY
         let blockhashResponse;
         for (let i = 0; i < 5; i++) {
             try {
@@ -72,7 +72,6 @@ export async function POST(req: Request) {
             }
         }
 
-        // This line is now 100% safe now
         const { blockhash, lastValidBlockHeight } = await blockhashResponse!;
 
         // 3. Build & send transaction
@@ -89,7 +88,7 @@ export async function POST(req: Request) {
         );
 
         transaction.recentBlockhash = blockhash;
-        transaction.lastValidBlockHeight = lastValidBlockHeight; // optional but good
+        transaction.lastValidBlockHeight = lastValidBlockHeight;
         transaction.feePayer = rewardKeypair.publicKey;
         transaction.sign(rewardKeypair);
 

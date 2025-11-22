@@ -1,4 +1,3 @@
-// components/RecentActivity.tsx
 "use client";
 import { useEffect, useState } from "react";
 
@@ -18,7 +17,6 @@ export default function RecentActivity() {
             const res = await fetch("/api/bids");
             if (!res.ok) throw new Error();
             const data = await res.json();
-            // If API returns { bids: [...] }, use data.bids; if array → data
             setBids(Array.isArray(data) ? data : data.bids || []);
         } catch (err) {
             console.error("Failed to load recent bids");

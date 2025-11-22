@@ -15,7 +15,7 @@ type BidComponentProps = {
   onBalanceUpdate?: (balance: number) => void;
 };
 
-// Treasury wallet (from .env)
+// Treasury wallet
 const TREASURY_WALLET =
   process.env.NEXT_PUBLIC_TREASURY_WALLET ||
   "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
@@ -27,7 +27,6 @@ export default function BidComponent({
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Use your reliable RPC
   const rpcUrl =
     process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
   const connection = new Connection(rpcUrl, "confirmed");
@@ -63,7 +62,7 @@ export default function BidComponent({
         })
       );
 
-      // Get fresh blockhash (with retry)
+      // Get fresh blockhash
       let blockhash;
       for (let i = 0; i < 3; i++) {
         try {

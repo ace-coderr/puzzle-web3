@@ -1,4 +1,3 @@
-// src/app/api/bids/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
@@ -31,7 +30,6 @@ export async function GET() {
       gameId: b.gameResult.gameId,
     }));
 
-    // CRITICAL: Return array directly
     return NextResponse.json(formatted);
   } catch (error) {
     console.error("GET /api/bids failed:", error);
@@ -39,7 +37,7 @@ export async function GET() {
   }
 }
 
-// POST — Create bid (already perfect)
+// POST — Create bid
 export async function POST(req: Request) {
   try {
     const { walletAddress, amount, gameId, txSignature } = await req.json();
