@@ -129,7 +129,7 @@ export default function RewardPage() {
                 >
                   <div className="flex-1">
                     <p className="text-3xl font-bold text-emerald-400">
-                      {r.reward!.toFixed(3)} SOL
+                      {r.reward!.toString().replace(/\.?0+$/, '')} SOL
                     </p>
                     <p className="text-sm text-gray-300 mt-1">
                       Won in <span className="font-mono">{r.moves}</span> moves • {r.time}s • {new Date(r.createdAt).toLocaleDateString()}
@@ -178,10 +178,10 @@ export default function RewardPage() {
                     <div>
                       <p className="text-xl font-bold text-emerald-400">WIN</p>
                       <p className="text-sm text-gray-300 mt-1">
-                        <span className="font-mono">{r.moves}</span> moves • {r.time}s • Bid: {r.bidding.toFixed(3)} SOL
+                        <span className="font-mono">{r.moves}</span> moves • {r.time}s • Bid: {r.bidding.toString().replace(/\.?0+$/, '')} SOL
                       </p>
                       <p className="text-xs text-emerald-300 mt-1">
-                        Reward: {r.reward!.toFixed(3)} SOL • Claimed
+                        Reward: {r.reward!.toString().replace(/\.?0+$/, '')} SOL • Claimed
                       </p>
                     </div>
                     <p className="text-xs text-gray-500">
@@ -211,7 +211,7 @@ export default function RewardPage() {
                     <div>
                       <p className="text-xl font-bold text-red-400">LOSE</p>
                       <p className="text-sm text-gray-300 mt-1">
-                        <span className="font-mono">{r.moves}</span> moves • {r.time}s • Bid: {r.bidding.toFixed(3)} SOL
+                        <span className="font-mono">{r.moves}</span> moves • {r.time}s • Bid: {r.bidding.toString().replace(/\.?0+$/, '')} SOL
                       </p>
                     </div>
                     <p className="text-xs text-gray-500">
