@@ -455,7 +455,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
 
                 {/* ---------- MODALS ---------- */}
 
-                {/* BID CONFIRMED → USER MUST CLICK TO START */}
+                {/* BID CONFIRMED */}
                 <Modal
                     show={showStartModal}
                     title="BID LOCKED"
