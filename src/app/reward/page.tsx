@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Button } from "@/components/ui/button";
 import Modal from "../components/modal";
+import { useGameSounds } from "@/hooks/useGameSounds";
+import confetti from "canvas-confetti";
 
 type GameResult = {
   id: string;
@@ -20,6 +22,8 @@ type GameResult = {
 export default function RewardPage() {
   const { publicKey } = useWallet();
   const router = useRouter();
+  const { playClaim } = useGameSounds();
+
   const [results, setResults] = useState<GameResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState<string | null>(null);
@@ -66,8 +70,18 @@ export default function RewardPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Claim failed");
 
+      // CONFETTI + SOUND + SUCCESS
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#10b981", "#34d399", "#6ee7b7", "#a7f3d0"],
+      });
+
+      playClaim();
+
       setModal({ open: true, amount: data.amount, tx: data.txSignature });
-      fetchHistory(); // refresh instantly
+      fetchHistory();
     } catch (err: any) {
       alert("Claim failed: " + err.message);
     } finally {
@@ -128,8 +142,8 @@ export default function RewardPage() {
                     onClick={() => handleClaim(r.id)}
                     disabled={claiming === r.id}
                     className={`min-w-[120px] font-bold transition-all ${claiming === r.id
-                        ? "bg-gray-600 cursor-not-allowed"
-                        : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:scale-105"
+                      ? "bg-gray-600 cursor-not-allowed"
+                      : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:scale-105"
                       }`}
                   >
                     {claiming === r.id ? (

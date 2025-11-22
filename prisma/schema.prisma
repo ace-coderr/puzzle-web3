@@ -30,7 +30,7 @@ model GameResult {
   user       User     @relation(fields: [userId], references: [id])
 
   moves      Int      @default(0)
-  score      Int      @default(0)
+  time       Int      @default(0)     // ← RENAMED FROM `score` → `time` (seconds)
   bidding    Decimal  @db.Decimal(18, 9)
   won        Boolean  @default(false)
   difficulty String   @default("medium")

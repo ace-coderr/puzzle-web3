@@ -1,11 +1,10 @@
-// src/app/api/game-results/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-// GET — Fetch full game history (wins + losses + rewards)
+// GET — Fetch full game history
 export async function GET(req: NextRequest) {
   try {
     const walletAddress = req.nextUrl.searchParams.get("walletAddress");
@@ -28,7 +27,7 @@ export async function GET(req: NextRequest) {
       results: results.map((r) => ({
         id: r.gameId,
         moves: r.moves,
-        time: r.score,
+        time: r.time,
         bidding: Number(r.bidding),
         reward: r.reward ? Number(r.reward) : null,
         won: r.won,
@@ -53,7 +52,7 @@ export async function POST(req: NextRequest) {
     const {
       walletAddress,
       moves,
-      score: time,
+      time,
       bidding,
       won,
       gameId,
@@ -103,7 +102,7 @@ export async function POST(req: NextRequest) {
         where: { gameId },
         update: {
           moves: movesNum,
-          score: timeNum,
+          time: timeNum,
           bidding: bidAmount,
           won: Boolean(won),
           reward: rewardDecimal,
@@ -114,7 +113,7 @@ export async function POST(req: NextRequest) {
           gameId,
           userId: user.id,
           moves: movesNum,
-          score: timeNum,
+          time: timeNum,
           bidding: bidAmount,
           won: Boolean(won),
           difficulty,

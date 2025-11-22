@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Modal from "./modal";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { useGameSounds } from "@/hooks/useGameSounds";
 
 export type Tile = {
     id: number;
@@ -41,7 +42,7 @@ async function saveResult(
             body: JSON.stringify({
                 walletAddress: opts.walletAddress,
                 moves: opts.moves,
-                score: opts.time,
+                time: opts.time,
                 bidding: opts.bidding,
                 won: result === "WIN",
                 gameId,
@@ -79,6 +80,7 @@ function shuffleArray<T>(array: T[]): T[] {
 export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const { publicKey, connected } = useWallet();
     const router = useRouter();
+    const { playWin, playLose, playClaim } = useGameSounds();
 
     /* ---------- State ---------- */
     const [imageUrl, setImageUrl] = useState<string>("/images/wall.jpg");
@@ -155,6 +157,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 setIsWin(true);
                 setTimerActive(false);
                 setResultSaved(true);
+                playWin();
                 await saveResult("WIN", {
                     walletAddress: publicKey?.toString(),
                     moves: moveCount,
@@ -167,6 +170,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 setIsGameOver(true);
                 setTimerActive(false);
                 setResultSaved(true);
+                playLose();
                 await saveResult("LOSE", {
                     walletAddress: publicKey?.toString(),
                     moves: moveCount,
@@ -238,7 +242,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         setDraggedTile(null);
         setHoveredTile(null);
 
-        if (moveCount === 0) {
+        if (moveCount === 0 && currentBid > 0) {
             setTimerActive(true);
         }
         setMoveCount((prev) => prev + 1);
@@ -507,7 +511,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                     title="Puzzle Victory"
                     message={`Won in ${moveCount} moves, ${time}s`}
                     show={isWin}
-                    onConfirm={() => router.push("/reward")} // or trigger claim
+                    onConfirm={() => router.push("/reward")}
                     onClose={handleResetToDefault}
                     confirmText="Claim Reward"
                     variant="success"
