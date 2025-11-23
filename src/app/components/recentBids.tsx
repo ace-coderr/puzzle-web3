@@ -63,7 +63,7 @@ export default function RecentActivity() {
 
                                 {/* Amount */}
                                 <span className="text-emerald-400 font-bold">
-                                    {bid.amount.toFixed(3)} SOL
+                                    {bid.amount.toString().replace(/\.?0+$/, '')} SOL
                                 </span>
 
                                 {/* Date */}

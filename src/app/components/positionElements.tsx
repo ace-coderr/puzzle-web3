@@ -64,6 +64,18 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 /* -------------------------------------------------------------
+   INFINITE IMAGE SOURCES — NEVER REPEATS
+   ------------------------------------------------------------- */
+const IMAGE_SOURCES = [
+    (seed: number) => `https://picsum.photos/seed/${seed}/800/480`,
+    (seed: number) => `https://source.unsplash.com/random/800x480?sig=${seed}`,
+    (seed: number) => `https://loremflickr.com/800/480/abstract,art,texture?random=${seed}`,
+    (seed: number) => `https://picsum.photos/seed/art${seed}/800/480`,
+    (seed: number) => `https://source.unsplash.com/random/800x480/?nature,landscape&sig=${seed}`,
+    (seed: number) => `https://api.dicebear.com/7.x/shapes/jpg?seed=${seed}&size=800`,
+] as const;
+
+/* -------------------------------------------------------------
    MAIN COMPONENT
    ------------------------------------------------------------- */
 export function PositionElements({ onRetry }: { onRetry?: () => void }) {
@@ -93,6 +105,9 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [gameActive, setGameActive] = useState(false);
     const [finalTime, setFinalTime] = useState<number>(0);
+
+    // Session-based used seeds to prevent repeats
+    const [usedSeeds] = useState<Set<number>>(new Set());
 
     /* ---------- Difficulty ---------- */
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -193,16 +208,27 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
 
     /* ---------- Image helpers ---------- */
     const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
+        const file = e.target.files?.[0];
         if (file) {
-            const url = URL.createObjectURL(file)
-            setImageUrl(url)
+            const url = URL.createObjectURL(file);
+            setImageUrl(url);
+            setTiles(generateTiles(url));
         }
     };
+
     const handleRandomImage = () => {
-        const seed = Math.floor(Math.random() * 1000)
-        const url = `https://picsum.photos/seed/${seed}/800/480`
-        setImageUrl(url)
+        let seed: number;
+        do {
+            seed = Date.now() + Math.floor(Math.random() * 1_000_000);
+        } while (usedSeeds.has(seed));
+
+        usedSeeds.add(seed);
+
+        const source = IMAGE_SOURCES[Math.floor(Math.random() * IMAGE_SOURCES.length)];
+        const url = source(seed);
+
+        setImageUrl(url);
+        setTiles(generateTiles(url));
     };
 
     // DRAG & DROP
@@ -221,12 +247,8 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             t.id === draggedTile.id ? { ...t, x: target.x, y: target.y } :
                 t.id === target.id ? { ...t, x: draggedTile.x, y: draggedTile.y } : t
         ));
-
         setDraggedTile(null);
         setMoveCount(c => c + 1);
-
-        if (moveCount === 0 && gameActive) {
-        }
     };
 
     // RESTART
@@ -245,7 +267,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         const handler = (e: any) => {
             const { amount, gameId } = e.detail || {};
             if (gameId) localStorage.setItem("currentGameId", gameId);
-
             setCurrentBid(amount || 0);
             handleRestart();
             setBidStarted(true);
@@ -255,7 +276,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             setTime(0);
             setMoveCount(0);
         };
-
         document.addEventListener("puzzle-restart", handler);
         return () => document.removeEventListener("puzzle-restart", handler);
     }, []);
@@ -454,7 +474,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                 )}
 
                 {/* ---------- MODALS ---------- */}
-
                 {/* BID CONFIRMED */}
                 <Modal
                     show={showStartModal}
