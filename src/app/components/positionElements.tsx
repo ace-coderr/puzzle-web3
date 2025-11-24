@@ -84,7 +84,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const { playWin, playLose, playClaim } = useGameSounds();
 
     // CORE STATES
-    const [imageUrl, setImageUrl] = useState<string>("/images/wall.jpg");
+    const [imageUrl, setImageUrl] = useState<string>("/images/preview.jpg");
     const [tiles, setTiles] = useState<Tile[]>([]);
     const [draggedTile, setDraggedTile] = useState<Tile | null>(null);
     const [hoveredTile, setHoveredTile] = useState<Tile | null>(null);
@@ -93,12 +93,10 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const [isWin, setIsWin] = useState<boolean>(false);
     const [time, setTime] = useState<number>(0);
     const [timerActive, setTimerActive] = useState<boolean>(false);
-    const [walletAddress, setWalletAddress] = useState<string | undefined>(undefined);
-    const [resultSaved, setResultSaved] = useState<boolean>(false);
+    const [walletAddress, setWalletAddress] = useState<string>("");
     const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
     const [leaderboardData, setLeaderboardData] = useState<any>(null);
     const [loadingLB, setLoadingLB] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
     const [currentBid, setCurrentBid] = useState<number>(0);
     const [showStartModal, setShowStartModal] = useState(false);
     const [bidStarted, setBidStarted] = useState(false);
@@ -107,7 +105,7 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const [finalTime, setFinalTime] = useState<number>(0);
 
     // Session-based used seeds to prevent repeats
-    const [usedSeeds] = useState<Set<number>>(new Set());
+    const [usedSeeds, setUsedSeeds] = useState<Set<number>>(new Set());
 
     /* ---------- Difficulty ---------- */
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -145,13 +143,9 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         });
     }
 
-
-    /* ---------- Init default puzzle ---------- */
     useEffect(() => {
-        const defaultImage = "/images/wall.jpg";
-        setTiles(generateTiles(defaultImage));
-    }, []);
-
+        setWalletAddress(publicKey?.toString() || "");
+    }, [publicKey]);
 
     /* ---------- Win / Lose detection ---------- */
     useEffect(() => {
@@ -207,22 +201,26 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
 
 
     /* ---------- Image helpers ---------- */
-    const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const url = URL.createObjectURL(file);
-            setImageUrl(url);
-            setTiles(generateTiles(url));
-        }
-    };
-
     const handleRandomImage = () => {
-        let seed: number;
+        let seed: number = 0;
+
         do {
             seed = Date.now() + Math.floor(Math.random() * 1_000_000);
         } while (usedSeeds.has(seed));
 
-        usedSeeds.add(seed);
+        setUsedSeeds(prev => {
+            const next = new Set(prev);
+            next.add(seed);
+
+            if (next.size > 200) {
+                const oldest = next.keys().next().value;
+                if (oldest !== undefined) {
+                    next.delete(oldest);
+                }
+            }
+
+            return next;
+        });
 
         const source = IMAGE_SOURCES[Math.floor(Math.random() * IMAGE_SOURCES.length)];
         const url = source(seed);
@@ -252,16 +250,26 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     };
 
     // RESTART
-    const handleRestart = (img?: string) => {
-        const url = img || `https://picsum.photos/seed/${Date.now()}/800/480`;
-        setImageUrl(url);
-        setTiles(generateTiles(url));
+    const handleRestart = () => {
+        if (currentBid > 0) {
+            handleRandomImage();
+        } else {
+            setImageUrl("/images/preview.jpg");
+            setTiles(generateTiles("/images/preview.jpg"));
+        }
+
         setMoveCount(0);
         setTime(0);
         setFinalTime(0);
         setIsWin(false);
         setIsGameOver(false);
+        setGameActive(false);
     };
+
+    useEffect(() => {
+        setImageUrl("/images/preview.jpg");
+        setTiles(generateTiles("/images/preview.jpg"));
+    }, [])
 
     useEffect(() => {
         const handler = (e: any) => {
@@ -282,26 +290,49 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
 
     /* ---------- Leaderboard Fetch ---------- */
     useEffect(() => {
-        if (!showLeaderboard || !walletAddress) return;
+        if (!showLeaderboard || !walletAddress) {
+            setLeaderboardData(null);
+            return;
+        }
+
+        let isMounted = true;
+        let intervalId: NodeJS.Timeout | null = null;
+
         const fetchLB = async () => {
+            if (!isMounted) return;
+
             setLoadingLB(true);
             try {
                 const res = await fetch("/api/leaderboard", {
                     headers: { "x-wallet-address": walletAddress },
                     cache: "no-store",
                 });
+
                 if (!res.ok) throw new Error("Failed");
                 const data = await res.json();
-                setLeaderboardData(data);
+
+                if (isMounted) {
+                    setLeaderboardData(data);
+                }
             } catch (err) {
-                console.error(err);
+                console.error("Leaderboard fetch failed:", err);
             } finally {
-                setLoadingLB(false);
+                if (isMounted) {
+                    setLoadingLB(false);
+                }
             }
         };
+
         fetchLB();
-        const int = setInterval(fetchLB, 30000);
-        return () => clearInterval(int);
+
+        intervalId = setInterval(fetchLB, 30_000);
+
+        return () => {
+            isMounted = false;
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        };
     }, [showLeaderboard, walletAddress]);
 
 
@@ -462,14 +493,10 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
 
                 {/* Image controls only before a bid */}
                 {!bidStarted && (
-                    <div className="flex gap-4 transition-opacity duration-500 ran-upl" style={{ opacity: bidStarted ? 0 : 1 }}>
-                        <button onClick={handleRandomImage} className="bg-gray-900 hover:bg-gray-400 transition random-btn">
-                            Random Image
-                        </button>
-                        <button onClick={() => inputRef.current?.click()} className="bg-gray-900 hover:bg-gray-400 transition random-btn">
-                            Upload Image
-                        </button>
-                        <input ref={inputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+                    <div className="text-center mt-6">
+                        <p className="text-gray-400 text-sm font-medium">
+                            New puzzle loads automatically after each bid
+                        </p>
                     </div>
                 )}
 
