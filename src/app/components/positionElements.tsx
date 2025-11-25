@@ -378,16 +378,7 @@ export function PositionElements() {
                     <br />
                     <img src={imageUrl} alt="Original" className="w-[20vw] h-auto border rounded shadow" />
                 </div>
-
-
-                {/* Image controls only before a bid */}
-                {!bidStarted && (
-                    <div className="text-center mt-6">
-                        <p className="text-gray-400 text-sm font-medium">
-                            New puzzle loads automatically after each bid
-                        </p>
-                    </div>
-                )}
+                <br />
 
                 {/* ---------- MODALS ---------- */}
                 {/* BID CONFIRMED */}
