@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
 type LeaderboardEntry = {

@@ -73,7 +73,15 @@ const IMAGE_SOURCES = [
     (seed: number) => `https://picsum.photos/seed/art${seed}/800/480`,
     (seed: number) => `https://source.unsplash.com/random/800x480/?nature,landscape&sig=${seed}`,
     (seed: number) => `https://api.dicebear.com/7.x/shapes/jpg?seed=${seed}&size=800`,
+    (seed: number) => `https://loremflickr.com/800/480/painting,graphic?lock=${seed}`,
+    (seed: number) => `https://placehold.co/800x480/png?text=Art+${seed}`,
+    (seed: number) => `https://placekitten.com/800/480?image=${seed % 16}`,
+    (seed: number) => `https://placebear.com/800/480?bear=${seed}`,
+    (seed: number) => `https://placebeard.it/800x480?seed=${seed}`,
+    (seed: number) => `https://random.imagecdn.app/800/480?seed=${seed}`,
+    (seed: number) => `https://picsum.photos/800/480?random=${seed}`,
 ] as const;
+
 
 /* -------------------------------------------------------------
    MAIN COMPONENT
@@ -93,10 +101,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const [isWin, setIsWin] = useState<boolean>(false);
     const [time, setTime] = useState<number>(0);
     const [timerActive, setTimerActive] = useState<boolean>(false);
-    const [walletAddress, setWalletAddress] = useState<string>("");
-    const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
-    const [leaderboardData, setLeaderboardData] = useState<any>(null);
-    const [loadingLB, setLoadingLB] = useState(false);
     const [currentBid, setCurrentBid] = useState<number>(0);
     const [showStartModal, setShowStartModal] = useState(false);
     const [bidStarted, setBidStarted] = useState(false);
@@ -142,10 +146,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             return { id: i, x, y, bgX, bgY };
         });
     }
-
-    useEffect(() => {
-        setWalletAddress(publicKey?.toString() || "");
-    }, [publicKey]);
 
     /* ---------- Win / Lose detection ---------- */
     useEffect(() => {
@@ -251,20 +251,21 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
 
     // RESTART
     const handleRestart = () => {
-        if (currentBid > 0) {
-            handleRandomImage();
-        } else {
-            setImageUrl("/images/preview.jpg");
-            setTiles(generateTiles("/images/preview.jpg"));
-        }
+        setCurrentBid(0);
+        setBidStarted(false);
+        setShowStartModal(false);
 
+        setImageUrl("/images/preview.jpg");
+        setTiles(generateTiles("/images/preview.jpg"));
         setMoveCount(0);
         setTime(0);
         setFinalTime(0);
         setIsWin(false);
         setIsGameOver(false);
         setGameActive(false);
+        setTimerActive(false);
     };
+
 
     useEffect(() => {
         setImageUrl("/images/preview.jpg");
@@ -275,8 +276,16 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
         const handler = (e: any) => {
             const { amount, gameId } = e.detail || {};
             if (gameId) localStorage.setItem("currentGameId", gameId);
+
             setCurrentBid(amount || 0);
-            handleRestart();
+
+            if (amount > 0) {
+                handleRandomImage();
+            } else {
+                setImageUrl("/images/preview.jpg");
+                setTiles(generateTiles("/images/preview.jpg"));
+            }
+
             setBidStarted(true);
             setShowStartModal(true);
             setGameActive(false);
@@ -284,134 +293,16 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
             setTime(0);
             setMoveCount(0);
         };
+
         document.addEventListener("puzzle-restart", handler);
         return () => document.removeEventListener("puzzle-restart", handler);
     }, []);
-
-    /* ---------- Leaderboard Fetch ---------- */
-    useEffect(() => {
-        if (!showLeaderboard || !walletAddress) {
-            setLeaderboardData(null);
-            return;
-        }
-
-        let isMounted = true;
-        let intervalId: NodeJS.Timeout | null = null;
-
-        const fetchLB = async () => {
-            if (!isMounted) return;
-
-            setLoadingLB(true);
-            try {
-                const res = await fetch("/api/leaderboard", {
-                    headers: { "x-wallet-address": walletAddress },
-                    cache: "no-store",
-                });
-
-                if (!res.ok) throw new Error("Failed");
-                const data = await res.json();
-
-                if (isMounted) {
-                    setLeaderboardData(data);
-                }
-            } catch (err) {
-                console.error("Leaderboard fetch failed:", err);
-            } finally {
-                if (isMounted) {
-                    setLoadingLB(false);
-                }
-            }
-        };
-
-        fetchLB();
-
-        intervalId = setInterval(fetchLB, 30_000);
-
-        return () => {
-            isMounted = false;
-            if (intervalId) {
-                clearInterval(intervalId);
-            }
-        };
-    }, [showLeaderboard, walletAddress]);
-
 
     /* -------------------------------------------------------------
      RENDER
      ------------------------------------------------------------- */
     return (
         <>
-            {/* LEADERBOARD MODAL */}
-            <Modal
-                title="Leaderboard"
-                show={showLeaderboard}
-                onClose={() => setShowLeaderboard(false)}
-                variant="leaderboard"
-            >
-                {loadingLB ? (
-                    <p className="text-center py-8 text-gray-400">Loading...</p>
-                ) : (
-                    <>
-                        {/* Your Rank */}
-                        {leaderboardData?.myRank && (
-                            <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-5 rounded-xl mb-6 text-white shadow-lg">
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-white/30 rounded-full flex items-center justify-center text-3xl font-bold">
-                                            #{leaderboardData.myRank.rank}
-                                        </div>
-                                        <div>
-                                            <p className="text-2xl font-bold">YOU</p>
-                                            <p className="font-mono text-sm">{leaderboardData.myRank.wallet}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-2xl">{leaderboardData.myRank.wins} Wins</p>
-                                        <p className="text-lg">{leaderboardData.myRank.totalBid.toString().replace(/\.?0+$/, '')} SOL</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Global List */}
-                        <div className="space-y-3 max-h-[50vh] overflow-y-auto">
-                            {leaderboardData?.leaderboard?.length === 0 ? (
-                                <p className="text-center text-gray-400 py-8">No wins yet</p>
-                            ) : (
-                                leaderboardData?.leaderboard?.map((e: any) => (
-                                    <div
-                                        key={e.rank}
-                                        className={`flex justify-between items-center p-3 rounded-lg transition ${e.isMe ? "bg-yellow-900/40 border-l-4 border-yellow-400" : "bg-slate-800"
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div
-                                                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${e.rank === 1
-                                                    ? "bg-yellow-400 text-black"
-                                                    : e.rank === 2
-                                                        ? "bg-gray-400 text-black"
-                                                        : e.rank === 3
-                                                            ? "bg-orange-600 text-white"
-                                                            : "bg-slate-600 text-white"
-                                                    }`}
-                                            >
-                                                {e.rank}
-                                            </div>
-                                            <span className="font-mono text-sm truncate max-w-[120px]">{e.wallet}</span>
-                                        </div>
-                                        <div className="text-right text-sm">
-                                            <div className="font-bold">{e.wins} Wins</div>
-                                            <div className="text-green-400">{e.totalBid.toFixed(3)} SOL</div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                        <p className="text-center text-xs text-gray-500 mt-6">Updates every 30s</p>
-                    </>
-                )}
-            </Modal>
-
             {/* ----- Difficulty picker ----- */}
             {connected && (
                 <div className="flex justify-center gap-3 mt-4 mb-2">
