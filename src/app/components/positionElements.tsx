@@ -86,7 +86,7 @@ const IMAGE_SOURCES = [
 /* -------------------------------------------------------------
    MAIN COMPONENT
    ------------------------------------------------------------- */
-export function PositionElements({ onRetry }: { onRetry?: () => void }) {
+export function PositionElements() {
     const { publicKey, connected } = useWallet();
     const router = useRouter();
     const { playWin, playLose, playClaim } = useGameSounds();
@@ -95,7 +95,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
     const [imageUrl, setImageUrl] = useState<string>("/images/preview.jpg");
     const [tiles, setTiles] = useState<Tile[]>([]);
     const [draggedTile, setDraggedTile] = useState<Tile | null>(null);
-    const [hoveredTile, setHoveredTile] = useState<Tile | null>(null);
     const [moveCount, setMoveCount] = useState<number>(0);
     const [isGameOver, setIsGameOver] = useState<boolean>(false);
     const [isWin, setIsWin] = useState<boolean>(false);
@@ -349,7 +348,6 @@ export function PositionElements({ onRetry }: { onRetry?: () => void }) {
                             backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
                             backgroundSize: `40vw 24vw`,
                             backgroundRepeat: 'no-repeat',
-                            border: hoveredTile?.id === tile.id ? '2px dashed red' : 'none',
                             opacity: draggedTile?.id === tile.id ? 0.5 : (currentBid > 0 ? 1 : 0.6),
                             filter: currentBid === 0 ? 'grayscale(100%) brightness(0.7)' : 'none',
                             boxShadow: draggedTile?.id === tile.id
