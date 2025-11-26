@@ -68,18 +68,17 @@ function shuffleArray<T>(array: T[]): T[] {
    ------------------------------------------------------------- */
 const IMAGE_SOURCES = [
     (seed: number) => `https://picsum.photos/seed/${seed}/800/480`,
-    (seed: number) => `https://source.unsplash.com/random/800x480?sig=${seed}`,
-    (seed: number) => `https://loremflickr.com/800/480/abstract,art,texture?random=${seed}`,
-    (seed: number) => `https://picsum.photos/seed/art${seed}/800/480`,
-    (seed: number) => `https://source.unsplash.com/random/800x480/?nature,landscape&sig=${seed}`,
-    (seed: number) => `https://api.dicebear.com/7.x/shapes/jpg?seed=${seed}&size=800`,
-    (seed: number) => `https://loremflickr.com/800/480/painting,graphic?lock=${seed}`,
-    (seed: number) => `https://placehold.co/800x480/png?text=Art+${seed}`,
-    (seed: number) => `https://placekitten.com/800/480?image=${seed % 16}`,
-    (seed: number) => `https://placebear.com/800/480?bear=${seed}`,
-    (seed: number) => `https://placebeard.it/800x480?seed=${seed}`,
-    (seed: number) => `https://random.imagecdn.app/800/480?seed=${seed}`,
-    (seed: number) => `https://picsum.photos/800/480?random=${seed}`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-v2/800/480`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-v3/800/480`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-blur1/800/480?blur=1`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-blur2/800/480?blur=2`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-gray/800/480?grayscale`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-gray2/800/480?grayscale&blur=1`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-gray3/800/480?grayscale&blur=2`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-sepia/800/480?sepia`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-sepia2/800/480?sepia&blur=1`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-contrast/800/480?contrast=2`,
+    (seed: number) => `https://picsum.photos/seed/${seed}-contrast2/800/480?contrast=1.5&blur=1`,
 ] as const;
 
 
@@ -107,8 +106,14 @@ export function PositionElements() {
     const [gameActive, setGameActive] = useState(false);
     const [finalTime, setFinalTime] = useState<number>(0);
 
-    // Session-based used seeds to prevent repeats
-    const [usedSeeds, setUsedSeeds] = useState<Set<number>>(new Set());
+    const [availableSeeds, setAvailableSeeds] = useState<number[]>([]);
+
+    useEffect(() => {
+        // generate 500 unique seeds for the session
+        const seeds = Array.from({ length: 500 }, (_, i) => i + 1);
+        setAvailableSeeds(shuffleArray(seeds));
+    }, []);
+
 
     /* ---------- Difficulty ---------- */
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -146,6 +151,29 @@ export function PositionElements() {
         });
     }
 
+    /* ---------------------- IMAGE & TILE LOADER ---------------------- */
+    const loadPuzzleImage = (showModal: boolean = false) => {
+        if (availableSeeds.length === 0) {
+            console.warn("No more unique images left in this session.");
+            return;
+        }
+
+        const seedIndex = Math.floor(Math.random() * availableSeeds.length);
+        const seed = availableSeeds[seedIndex];
+        setAvailableSeeds(prev => prev.filter((_, i) => i !== seedIndex));
+
+        const source = IMAGE_SOURCES[Math.floor(Math.random() * IMAGE_SOURCES.length)];
+        const url = source(seed);
+
+        const img = new Image();
+        img.src = url;
+        img.onload = () => {
+            setImageUrl(url);
+            setTiles(generateTiles(url));
+            if (showModal) setShowStartModal(true);
+        };
+    };
+
     /* ---------- Win / Lose detection ---------- */
     useEffect(() => {
         if (!tiles.length || !gameActive) return;
@@ -168,7 +196,13 @@ export function PositionElements() {
             setIsGameOver(true);
             setGameActive(false);
             playLose();
-            saveResult("LOSE", { walletAddress: publicKey?.toString(), moves: moveCount, time, bidding: currentBid, difficulty });
+            saveResult("LOSE", {
+                walletAddress: publicKey?.toString(),
+                moves: moveCount,
+                time,
+                bidding: currentBid,
+                difficulty
+            });
         }
     }, [tiles, moveCount, time, gameActive]);
 
@@ -198,62 +232,27 @@ export function PositionElements() {
         return () => clearInterval(interval);
     }, [timerActive, gameActive, maxTime]);
 
-
-    /* ---------- Image helpers ---------- */
-    const handleRandomImage = () => {
-        let seed: number = 0;
-
-        do {
-            seed = Date.now() + Math.floor(Math.random() * 1_000_000);
-        } while (usedSeeds.has(seed));
-
-        setUsedSeeds(prev => {
-            const next = new Set(prev);
-            next.add(seed);
-
-            if (next.size > 200) {
-                const oldest = next.keys().next().value;
-                if (oldest !== undefined) {
-                    next.delete(oldest);
-                }
-            }
-
-            return next;
-        });
-
-        const source = IMAGE_SOURCES[Math.floor(Math.random() * IMAGE_SOURCES.length)];
-        const url = source(seed);
-
-        setImageUrl(url);
-        setTiles(generateTiles(url));
-    };
-
     // DRAG & DROP
-    const handleDragStart = (tile: Tile) => {
-        if (!gameActive) return;
-        setDraggedTile(tile);
-    };
-
+    const handleDragStart = (tile: Tile) => { if (!gameActive) return; setDraggedTile(tile); };
     const handleDragOver = (e: React.DragEvent) => e.preventDefault();
-
     const handleDrop = (e: React.DragEvent, target: Tile) => {
         e.preventDefault();
         if (!gameActive || !draggedTile) return;
 
         setTiles(tiles.map(t =>
             t.id === draggedTile.id ? { ...t, x: target.x, y: target.y } :
-                t.id === target.id ? { ...t, x: draggedTile.x, y: draggedTile.y } : t
+                t.id === target.id ? { ...t, x: draggedTile.x, y: draggedTile.y } :
+                    t
         ));
         setDraggedTile(null);
         setMoveCount(c => c + 1);
     };
 
-    // RESTART
+    /* ---------------------- RESTART ---------------------- */
     const handleRestart = () => {
         setCurrentBid(0);
         setBidStarted(false);
         setShowStartModal(false);
-
         setImageUrl("/images/preview.jpg");
         setTiles(generateTiles("/images/preview.jpg"));
         setMoveCount(0);
@@ -265,37 +264,37 @@ export function PositionElements() {
         setTimerActive(false);
     };
 
-
-    useEffect(() => {
-        setImageUrl("/images/preview.jpg");
-        setTiles(generateTiles("/images/preview.jpg"));
-    }, [])
-
+    /* ---------------------- EVENT HANDLER ---------------------- */
     useEffect(() => {
         const handler = (e: any) => {
             const { amount, gameId } = e.detail || {};
             if (gameId) localStorage.setItem("currentGameId", gameId);
 
             setCurrentBid(amount || 0);
-
-            if (amount > 0) {
-                handleRandomImage();
-            } else {
-                setImageUrl("/images/preview.jpg");
-                setTiles(generateTiles("/images/preview.jpg"));
-            }
-
             setBidStarted(true);
-            setShowStartModal(true);
             setGameActive(false);
             setTimerActive(false);
             setTime(0);
             setMoveCount(0);
+
+            if (amount > 0) loadPuzzleImage(true);
+            else {
+                setImageUrl("/images/preview.jpg");
+                setTiles(generateTiles("/images/preview.jpg"));
+                setShowStartModal(true);
+            }
         };
 
         document.addEventListener("puzzle-restart", handler);
         return () => document.removeEventListener("puzzle-restart", handler);
+    }, [availableSeeds]);
+
+    /* ---------------------- INITIAL LOAD ---------------------- */
+    useEffect(() => {
+        setImageUrl("/images/preview.jpg");
+        setTiles(generateTiles("/images/preview.jpg"));
     }, []);
+
 
     /* -------------------------------------------------------------
      RENDER
