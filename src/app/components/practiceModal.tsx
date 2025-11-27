@@ -75,7 +75,7 @@ export default function PracticeModal({ show, onClose, onConfirm, type, moves, t
             onClose={onClose}
             onConfirm={onConfirm}
             confirmText={confirmText}
-            variant={variant} // ← sets the color
+            variant={variant}
         >
             {content}
         </Modal>
