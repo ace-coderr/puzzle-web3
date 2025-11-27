@@ -16,7 +16,6 @@ export default function PracticeModal({ show, onClose, onConfirm, type, moves, t
     let confirmText = "OK";
     let content: React.ReactNode = null;
 
-    // Define variant colors
     const variant = type === "start" ? "start" : type === "win" ? "success" : "default";
 
     if (type === "start") {
