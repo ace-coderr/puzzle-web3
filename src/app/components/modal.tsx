@@ -91,26 +91,14 @@ export default function Modal({
               <button
                 onClick={onConfirm}
                 className="px-10 py-5 bg-gradient-to-r from-emerald-500 to-teal-600 
-                           hover:from-emerald-400 hover:to-teal-500
-                           active:scale-95
-                           text-white font-black text-xl rounded-2xl 
-                           shadow-2xl shadow-emerald-600/50
-                           transform transition-all duration-300 
-                           hover:shadow-emerald-500/60 hover:scale-105"
+                   hover:from-emerald-400 hover:to-teal-500
+                   active:scale-95
+                   text-white font-black text-xl rounded-2xl 
+                   shadow-2xl shadow-emerald-600/50
+                   transform transition-all duration-300 
+                   hover:shadow-emerald-500/60 hover:scale-105"
               >
                 {confirmText}
-              </button>
-            )}
-
-            {onClose && !singleButton && (
-              <button
-                onClick={onClose}
-                className="px-8 py-4 bg-white/10 hover:bg-white/20 
-                           border border-white/20 hover:border-white/40
-                           backdrop-blur-md rounded-xl font-bold
-                           transition-all duration-300 active:scale-95"
-              >
-                Close
               </button>
             )}
           </div>

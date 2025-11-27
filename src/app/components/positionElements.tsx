@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import Modal from "./modal";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useGameSounds } from "@/hooks/useGameSounds";
+import PracticeModal from "./practiceModal";
 
 export type Tile = {
     id: number;
@@ -98,7 +100,6 @@ export function PositionElements() {
     const [isGameOver, setIsGameOver] = useState<boolean>(false);
     const [isWin, setIsWin] = useState<boolean>(false);
     const [time, setTime] = useState<number>(0);
-    const [timerActive, setTimerActive] = useState<boolean>(false);
     const [currentBid, setCurrentBid] = useState<number>(0);
     const [showStartModal, setShowStartModal] = useState(false);
     const [bidStarted, setBidStarted] = useState(false);
@@ -107,6 +108,12 @@ export function PositionElements() {
     const [finalTime, setFinalTime] = useState<number>(0);
 
     const [availableSeeds, setAvailableSeeds] = useState<number[]>([]);
+
+    // ★ Practice Mode Feature ★
+    const [practiceMode, setPracticeMode] = useState<boolean>(false);
+    const [showPracticeModal, setShowPracticeModal] = useState(false);
+    const [practiceType, setPracticeType] = useState<"start" | "win" | "gameover">("start");
+    const [finalPracticeTime, setFinalPracticeTime] = useState<number>(0);
 
     useEffect(() => {
         // generate 500 unique seeds for the session
@@ -180,31 +187,48 @@ export function PositionElements() {
 
         const won = tiles.every(t => t.x === t.bgX && t.y === t.bgY);
 
-        if (won) {
-            setGameActive(false);
-            setFinalTime(time);
-            setIsWin(true);
-            playWin();
-            saveResult("WIN", {
-                walletAddress: publicKey?.toString(),
-                moves: moveCount,
-                time: time,
-                bidding: currentBid,
-                difficulty
-            });
-        } else if (moveCount >= maxMoves || time >= maxTime) {
-            setIsGameOver(true);
-            setGameActive(false);
-            playLose();
-            saveResult("LOSE", {
-                walletAddress: publicKey?.toString(),
-                moves: moveCount,
-                time,
-                bidding: currentBid,
-                difficulty
-            });
+        if (practiceMode) {
+            if (won) {
+                setGameActive(false);
+                setFinalPracticeTime(time); // ← store final time
+                setPracticeType("win");
+                setShowPracticeModal(true);
+                playWin();
+            } else if (moveCount >= maxMoves || time >= maxTime) {
+                setGameActive(false);
+                setFinalPracticeTime(time); // ← store final time
+                setPracticeType("gameover");
+                setShowPracticeModal(true);
+                playLose();
+            }
         }
-    }, [tiles, moveCount, time, gameActive]);
+        else {
+            if (won) {
+                setGameActive(false);
+                setFinalTime(time);
+                setIsWin(true);
+                playWin();
+                saveResult("WIN", {
+                    walletAddress: publicKey?.toString(),
+                    moves: moveCount,
+                    time,
+                    bidding: currentBid,
+                    difficulty
+                });
+            } else if (moveCount >= maxMoves || time >= maxTime) {
+                setIsGameOver(true);
+                setGameActive(false);
+                playLose();
+                saveResult("LOSE", {
+                    walletAddress: publicKey?.toString(),
+                    moves: moveCount,
+                    time,
+                    bidding: currentBid,
+                    difficulty
+                });
+            }
+        }
+    }, [tiles, moveCount, time, gameActive, practiceMode, publicKey, currentBid, difficulty]);
 
 
     /* ---------- Timer ---------- */
@@ -221,7 +245,7 @@ export function PositionElements() {
                 if (t + 1 >= maxTime) {
                     clearInterval(interval);
                     setGameActive(false);
-                    setIsGameOver(true);
+                    if (practiceMode) setIsGameOver(true);
                     return maxTime;
                 }
                 return t + 1;
@@ -230,7 +254,7 @@ export function PositionElements() {
 
         timerIntervalRef.current = interval;
         return () => clearInterval(interval);
-    }, [timerActive, gameActive, maxTime]);
+    }, [gameActive, maxTime, practiceMode]);
 
     // DRAG & DROP
     const handleDragStart = (tile: Tile) => { if (!gameActive) return; setDraggedTile(tile); };
@@ -253,6 +277,8 @@ export function PositionElements() {
         setCurrentBid(0);
         setBidStarted(false);
         setShowStartModal(false);
+        setPracticeMode(false); // ★ Practice Mode Feature ★
+
         setImageUrl("/images/preview.jpg");
         setTiles(generateTiles("/images/preview.jpg"));
         setMoveCount(0);
@@ -261,39 +287,33 @@ export function PositionElements() {
         setIsWin(false);
         setIsGameOver(false);
         setGameActive(false);
-        setTimerActive(false);
     };
 
-    /* ---------------------- EVENT HANDLER ---------------------- */
+    /* ---------- Event Handler for Bid / Start / Practice ---------- */
+    const handler = useCallback((e: any) => {
+        const { amount, gameId, practice } = e?.detail || {};
+
+        if (gameId) localStorage.setItem("currentGameId", gameId);
+        setPracticeMode(!!practice); // ★ Practice Mode Feature ★
+        setCurrentBid(amount || 0);
+        setBidStarted(true);
+        setGameActive(false);
+
+        if (amount > 0 || practice) {
+            loadPuzzleImage(true);
+        } else {
+            setImageUrl("/images/preview.jpg");
+            setTiles(generateTiles("/images/preview.jpg"));
+        }
+
+        setTime(0);
+        setMoveCount(0);
+    }, [availableSeeds, loadPuzzleImage, generateTiles]);
+
     useEffect(() => {
-        const handler = (e: any) => {
-            const { amount, gameId } = e.detail || {};
-            if (gameId) localStorage.setItem("currentGameId", gameId);
-
-            setCurrentBid(amount || 0);
-            setBidStarted(true);
-            setGameActive(false);
-            setTimerActive(false);
-            setTime(0);
-            setMoveCount(0);
-
-            if (amount > 0) loadPuzzleImage(true);
-            else {
-                setImageUrl("/images/preview.jpg");
-                setTiles(generateTiles("/images/preview.jpg"));
-                setShowStartModal(true);
-            }
-        };
-
         document.addEventListener("puzzle-restart", handler);
         return () => document.removeEventListener("puzzle-restart", handler);
-    }, [availableSeeds]);
-
-    /* ---------------------- INITIAL LOAD ---------------------- */
-    useEffect(() => {
-        setImageUrl("/images/preview.jpg");
-        setTiles(generateTiles("/images/preview.jpg"));
-    }, []);
+    }, [handler, availableSeeds]);
 
 
     /* -------------------------------------------------------------
@@ -301,27 +321,60 @@ export function PositionElements() {
      ------------------------------------------------------------- */
     return (
         <>
-            {/* ----- Difficulty picker ----- */}
+            {/* ----- Practice Toggle Button ----- */}
             {connected && (
                 <div className="flex justify-center gap-3 mt-4 mb-2">
-                    {difficulties.map(d => {
-                        const multiplier = d.level === 'easy' ? '1.2x' : d.level === 'medium' ? '1.5x' : '2.5x';
-                        return (
-                            <button
-                                key={d.level}
-                                onClick={() => setDifficulty(d.level)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 ${difficulty === d.level
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                    }`}
-                            >
-                                <span>{d.level.toUpperCase()}</span>
-                                <span className="text-xs opacity-80">• {multiplier}</span>
-                            </button>
-                        );
-                    })}
+                    <button
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${practiceMode ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            }`}
+                        onClick={() => {
+                            const newState = !practiceMode;
+                            setPracticeMode(newState);
+
+                            setMoveCount(0);
+                            setTime(0);
+                            setIsWin(false);
+                            setIsGameOver(false);
+                            setGameActive(false);
+
+                            if (newState) {
+                                setPracticeType("start");
+                                setShowPracticeModal(true);
+                                loadPuzzleImage();
+                            } else {
+                                setImageUrl("/images/preview.jpg");
+                                setTiles(generateTiles("/images/preview.jpg"));
+                            }
+                        }}
+                    >
+                        {practiceMode ? "Practice Mode ON" : "Practice Mode OFF"}
+                    </button>
                 </div>
             )}
+
+            {/* ----- Difficulty picker ----- */}
+            {
+                connected && (
+                    <div className="flex justify-center gap-3 mt-4 mb-2">
+                        {difficulties.map(d => {
+                            const multiplier = d.level === 'easy' ? '1.2x' : d.level === 'medium' ? '1.5x' : '2.5x';
+                            return (
+                                <button
+                                    key={d.level}
+                                    onClick={() => setDifficulty(d.level)}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 ${difficulty === d.level
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                        }`}
+                                >
+                                    <span>{d.level.toUpperCase()}</span>
+                                    <span className="text-xs opacity-80">• {multiplier}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )
+            }
 
 
             {/* ----- Counters ----- */}
@@ -336,8 +389,8 @@ export function PositionElements() {
                     <div
                         key={tile.id}
                         className="absolute w-[8vw] h-[6vw] box-border"
-                        draggable={currentBid > 0}
-                        onDragStart={() => currentBid > 0 && handleDragStart(tile)}
+                        draggable={practiceMode || currentBid > 0}
+                        onDragStart={() => (practiceMode || currentBid > 0) && handleDragStart(tile)}
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, tile)}
                         style={{
@@ -347,8 +400,8 @@ export function PositionElements() {
                             backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
                             backgroundSize: `40vw 24vw`,
                             backgroundRepeat: 'no-repeat',
-                            opacity: draggedTile?.id === tile.id ? 0.5 : (currentBid > 0 ? 1 : 0.6),
-                            filter: currentBid === 0 ? 'grayscale(100%) brightness(0.7)' : 'none',
+                            opacity: draggedTile?.id === tile.id ? 0.5 : (practiceMode || currentBid > 0 ? 1 : 0.6),
+                            filter: (practiceMode || currentBid > 0) ? 'none' : 'grayscale(100%) brightness(0.7)',
                             boxShadow: draggedTile?.id === tile.id
                                 ? '0 0 60px rgba(16, 185, 129, 0.8)'
                                 : '0 4px 16px rgba(0, 0, 0, 0.35)',
@@ -379,7 +432,26 @@ export function PositionElements() {
                 </div>
                 <br />
 
+
                 {/* ---------- MODALS ---------- */}
+                {/* PRACTICE MODAL */}
+                <PracticeModal
+                    show={practiceMode && showPracticeModal}
+                    type={practiceType}
+                    moves={moveCount}
+                    time={finalPracticeTime}
+                    onClose={() => setShowPracticeModal(false)}
+                    onConfirm={() => {
+                        setShowPracticeModal(false);
+
+                        if (practiceType === "start") {
+                            setGameActive(true);
+                        } else {
+                            handleRestart();
+                        }
+                    }}
+                />
+                
                 {/* BID CONFIRMED */}
                 <Modal
                     show={showStartModal}
@@ -390,7 +462,6 @@ export function PositionElements() {
                     onConfirm={() => {
                         setShowStartModal(false);
                         setGameActive(true);
-                        setTimerActive(true);
                     }}
                 >
                     <div className="text-center py-16">
