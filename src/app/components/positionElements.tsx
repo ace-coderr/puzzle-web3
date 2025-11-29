@@ -181,22 +181,20 @@ export function PositionElements() {
         };
     };
 
-    /* ---------- Win / Lose detection ---------- */
     useEffect(() => {
-        if (!tiles.length || !gameActive) return;
-
+        if (!tiles.length) return;
         const won = tiles.every(t => t.x === t.bgX && t.y === t.bgY);
 
         if (practiceMode) {
             if (won) {
                 setGameActive(false);
-                setFinalPracticeTime(time); // ← store final time
+                setFinalPracticeTime(time);
                 setPracticeType("win");
                 setShowPracticeModal(true);
                 playWin();
             } else if (moveCount >= maxMoves || time >= maxTime) {
                 setGameActive(false);
-                setFinalPracticeTime(time); // ← store final time
+                setFinalPracticeTime(time);
                 setPracticeType("gameover");
                 setShowPracticeModal(true);
                 playLose();
@@ -228,24 +226,18 @@ export function PositionElements() {
                 });
             }
         }
-    }, [tiles, moveCount, time, gameActive, practiceMode, publicKey, currentBid, difficulty]);
-
+    }, [tiles, moveCount, time, practiceMode, publicKey, currentBid, difficulty]);
 
     /* ---------- Timer ---------- */
     useEffect(() => {
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
-        if (!gameActive) {
-            setTime(0);
-            return;
-        }
+        if (!gameActive) return;
 
         const interval = setInterval(() => {
             setTime((t) => {
                 if (t + 1 >= maxTime) {
                     clearInterval(interval);
-                    setGameActive(false);
-                    if (practiceMode) setIsGameOver(true);
                     return maxTime;
                 }
                 return t + 1;
@@ -254,7 +246,7 @@ export function PositionElements() {
 
         timerIntervalRef.current = interval;
         return () => clearInterval(interval);
-    }, [gameActive, maxTime, practiceMode]);
+    }, [gameActive, maxTime]);
 
     // DRAG & DROP
     const handleDragStart = (tile: Tile) => { if (!gameActive) return; setDraggedTile(tile); };
