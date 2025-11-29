@@ -378,149 +378,167 @@ export function PositionElements() {
 
 
             {/* ----- Counters ----- */}
-            <div className="flex justify-center gap-10 mt-4 text-xl font-semibold text-white time-count">
-                <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow">Moves: {moveCount} / {maxMoves}</p>
-                <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow">Time: {time}s / {maxTime}s</p>
-            </div>
+            {gameActive && (
+                <div className="flex justify-center gap-10 mt-6 text-xl font-semibold text-white time-count">
+                    <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow"> Moves: {moveCount} / {maxMoves} </p>
+                    <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow"> Time: {time}s / {maxTime}s </p>
+                </div>
+            )}
 
             {/* ----- Puzzle board ----- */}
-            <div className="relative w-[40vw] h-[24vw] overflow-hidden stylle">
-                {tiles.map((tile) => (
-                    <div
-                        key={tile.id}
-                        className="absolute w-[8vw] h-[6vw] box-border"
-                        draggable={practiceMode || currentBid > 0}
-                        onDragStart={() => (practiceMode || currentBid > 0) && handleDragStart(tile)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, tile)}
-                        style={{
-                            left: `${tile.x}vw`,
-                            top: `${tile.y}vw`,
-                            backgroundImage: `url(${imageUrl})`,
-                            backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
-                            backgroundSize: `40vw 24vw`,
-                            backgroundRepeat: 'no-repeat',
-                            opacity: draggedTile?.id === tile.id ? 0.5 : (practiceMode || currentBid > 0 ? 1 : 0.6),
-                            filter: (practiceMode || currentBid > 0) ? 'none' : 'grayscale(100%) brightness(0.7)',
-                            boxShadow: draggedTile?.id === tile.id
-                                ? '0 0 60px rgba(16, 185, 129, 0.8)'
-                                : '0 4px 16px rgba(0, 0, 0, 0.35)',
-                        }}
-                    />
-                ))}
+            <div className="flex justify-center items-center gap-10 mt-12 w-full puzzle-board">
+                <div className="relative w-[40vw] h-[24vw] border border-white/10 rounded-xl shadow-xl bg-black/20 overflow-hidden">
+                    {(!gameActive && !practiceMode) && (
+                        generateTiles("/images/preview.jpg").map((tile) => (
+                            <div
+                                key={tile.id}
+                                className="absolute w-[8vw] h-[6vw] box-border cursor-grab opacity-80"
+                                draggable
+                                onDragStart={() => { }}
+                                style={{
+                                    left: `${tile.x}vw`,
+                                    top: `${tile.y}vw`,
+                                    backgroundImage: 'url("/images/preview.jpg")',
+                                    backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
+                                    backgroundSize: `40vw 24vw`,
+                                    backgroundRepeat: "no-repeat",
+                                    filter: "brightness(0.85)",
+                                }}
+                            />
+                        ))
+                    )}
 
-                {!gameActive && (
-                    <div className="absolute inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-10 rounded-3xl">
-                        <div className="text-center animate-pulse">
-                            <div className="text-9xl mb-10">Locked</div>
-                            <p className="text-7xl font-black text-white mb-6">
-                                {currentBid === 0 ? "PLACE BID TO PLAY" : "GAME OVER"}
-                            </p>
-                            <p className="text-4xl text-emerald-400 font-bold">
-                                {currentBid === 0 ? "No free moves." : "Bid again to continue."}
-                            </p>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* ----- Original image + image controls ----- */}
-            <div className="flex flex-col items-center gap-4 p-4">
-                <div>
-                    <br />
-                    <img src={imageUrl} alt="Original" className="w-[20vw] h-auto border rounded shadow" />
+                    {/* ---------- REAL GAME TILES ---------- */}
+                    {(gameActive || practiceMode) && tiles.map((tile) => (
+                        <div
+                            key={tile.id}
+                            className="absolute w-[8vw] h-[6vw] box-border"
+                            draggable={practiceMode || currentBid > 0}
+                            onDragStart={() =>
+                                (practiceMode || currentBid > 0) && handleDragStart(tile)
+                            }
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, tile)}
+                            style={{
+                                left: `${tile.x}vw`,
+                                top: `${tile.y}vw`,
+                                backgroundImage: `url(${imageUrl})`,
+                                backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
+                                backgroundSize: `40vw 24vw`,
+                                backgroundRepeat: "no-repeat",
+                                opacity: draggedTile?.id === tile.id ? 0.5 : 1,
+                                transition: "box-shadow 0.15s ease",
+                                boxShadow:
+                                    draggedTile?.id === tile.id
+                                        ? "0 0 50px rgba(16,185,129,0.8)"
+                                        : "0 4px 12px rgba(0,0,0,0.35)",
+                            }}
+                        />
+                    ))}
                 </div>
-                <br />
 
+                {/* ---------- CENTER ARROW ---------- */}
+                <div className="text-white text-5xl font-bold opacity-80 select-none">
+                    ➜
+                </div>
 
-                {/* ---------- MODALS ---------- */}
-                {/* PRACTICE MODAL */}
-                <PracticeModal
-                    show={practiceMode && showPracticeModal}
-                    type={practiceType}
-                    moves={moveCount}
-                    time={finalPracticeTime}
-                    onClose={() => setShowPracticeModal(false)}
-                    onConfirm={() => {
-                        setShowPracticeModal(false);
-
-                        if (practiceType === "start") {
-                            setGameActive(true);
-                        } else {
-                            handleRestart();
-                        }
-                    }}
-                />
-                
-                {/* BID CONFIRMED */}
-                <Modal
-                    show={showStartModal}
-                    title="BID LOCKED"
-                    variant="start"
-                    hideCloseButton={true}
-                    confirmText="START GAME"
-                    onConfirm={() => {
-                        setShowStartModal(false);
-                        setGameActive(true);
-                    }}
-                >
-                    <div className="text-center py-16">
-                        <div className="text-9xl font-black text-emerald-400 leading-tight tracking-tight">
-                            {currentBid.toString().replace(/\.?0+$/, '')} SOL
-                        </div>
-
-                        <p className="text-2xl text-white mt-12 font-semibold">
-                            Your bid is locked.
-                        </p>
-                        <p className="text-xl text-gray-300 mt-4">
-                            {maxMoves} moves • {maxTime}s • {rewardMultiplier}x reward
-                        </p>
-                        <p className="text-lg text-red-400 font-bold mt-10">
-                            No refunds. Click when ready.
-                        </p>
-                    </div>
-                </Modal>
-
-                {/* Victory */}
-                <Modal
-                    show={isWin}
-                    title="PUZZLE VICTORY"
-                    variant="success"
-                    hideCloseButton={true}
-                    confirmText="CLAIM REWARD"
-                    onConfirm={() => router.push("/reward")}
-                    onClose={handleRestart}
-                    singleButton={true}
-                >
-                    <div className="text-center py-12">
-                        <p className="text-8xl font-black text-emerald-400 drop-shadow-2xl leading-none animate-pulse">
-                            {((currentBid * rewardMultiplier).toString().replace(/\.?0+$/, ''))}
-                        </p>
-                        <p className="text-5xl font-bold text-emerald-300 -mt-4 mb-10">
-                            SOL REWARD
-                        </p>
-
-                        <div className="space-y-4 text-white">
-                            <p className="font-bold">
-                                Completed in <span className="text-emerald-400">{moveCount}</span> Moves - Time: <span className="text-emerald-400">{finalTime}s</span>
-                            </p>
-                        </div>
-
-                        <p className="text-lg text-gray-400 mt-8 font-medium">
-                            Reward processed instantly • No fees • Real wins
-                        </p>
-                    </div>
-                </Modal>
-
-                {/* Game Over */}
-                <Modal
-                    title="Game Over"
-                    message="Out of moves or time!"
-                    show={isGameOver}
-                    onClose={handleRestart}
-                    singleButton={true}
-                />
+                {/* ---------- RIGHT: REFERENCE IMAGE ---------- */}
+                <div className="w-[40vw] h-[24vw] border border-white/10 rounded-xl shadow-xl overflow-hidden">
+                    <img
+                        src={imageUrl}
+                        alt="Reference"
+                        className="w-full h-full object-cover"
+                    />
+                </div>
             </div>
+
+            {/* ---------- MODALS ---------- */}
+            {/* PRACTICE MODAL */}
+            <PracticeModal
+                show={practiceMode && showPracticeModal}
+                type={practiceType}
+                moves={moveCount}
+                time={finalPracticeTime}
+                onClose={() => setShowPracticeModal(false)}
+                onConfirm={() => {
+                    setShowPracticeModal(false);
+
+                    if (practiceType === "start") {
+                        setGameActive(true);
+                    } else {
+                        handleRestart();
+                    }
+                }}
+            />
+
+            {/* BID CONFIRMED */}
+            <Modal
+                show={showStartModal}
+                title="BID LOCKED"
+                variant="start"
+                hideCloseButton={true}
+                confirmText="START GAME"
+                onConfirm={() => {
+                    setShowStartModal(false);
+                    setGameActive(true);
+                }}
+            >
+                <div className="text-center py-16">
+                    <div className="text-9xl font-black text-emerald-400 leading-tight tracking-tight">
+                        {currentBid.toString().replace(/\.?0+$/, '')} SOL
+                    </div>
+
+                    <p className="text-2xl text-white mt-12 font-semibold">
+                        Your bid is locked.
+                    </p>
+                    <p className="text-xl text-gray-300 mt-4">
+                        {maxMoves} moves • {maxTime}s • {rewardMultiplier}x reward
+                    </p>
+                    <p className="text-lg text-red-400 font-bold mt-10">
+                        No refunds. Click when ready.
+                    </p>
+                </div>
+            </Modal>
+
+            {/* Victory */}
+            <Modal
+                show={isWin}
+                title="PUZZLE VICTORY"
+                variant="success"
+                hideCloseButton={true}
+                confirmText="CLAIM REWARD"
+                onConfirm={() => router.push("/reward")}
+                onClose={handleRestart}
+                singleButton={true}
+            >
+                <div className="text-center py-12">
+                    <p className="text-8xl font-black text-emerald-400 drop-shadow-2xl leading-none animate-pulse">
+                        {((currentBid * rewardMultiplier).toString().replace(/\.?0+$/, ''))}
+                    </p>
+                    <p className="text-5xl font-bold text-emerald-300 -mt-4 mb-10">
+                        SOL REWARD
+                    </p>
+
+                    <div className="space-y-4 text-white">
+                        <p className="font-bold">
+                            Completed in <span className="text-emerald-400">{moveCount}</span> Moves - Time: <span className="text-emerald-400">{finalTime}s</span>
+                        </p>
+                    </div>
+
+                    <p className="text-lg text-gray-400 mt-8 font-medium">
+                        Reward processed instantly • No fees • Real wins
+                    </p>
+                </div>
+            </Modal>
+
+            {/* Game Over */}
+            <Modal
+                title="Game Over"
+                message="Out of moves or time!"
+                show={isGameOver}
+                onClose={handleRestart}
+                singleButton={true}
+            />
         </>
     );
 }
