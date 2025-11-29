@@ -1,3 +1,11 @@
 .puzzle-board {
     padding: 80px;
 }
+
+.difficulty-mode {
+    padding: 4px;
+}
+
+.practice-mode{
+    padding: 4px;
+}

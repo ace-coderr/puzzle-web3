@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useGameSounds } from "@/hooks/useGameSounds";
 import PracticeModal from "./practiceModal";
+import Switch from "./ui/switch";
 
 export type Tile = {
     id: number;
@@ -66,7 +67,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 /* -------------------------------------------------------------
-   INFINITE IMAGE SOURCES — NEVER REPEATS
+   INFINITE IMAGE SOURCES
    ------------------------------------------------------------- */
 const IMAGE_SOURCES = [
     (seed: number) => `https://picsum.photos/seed/${seed}/800/480`,
@@ -83,6 +84,26 @@ const IMAGE_SOURCES = [
     (seed: number) => `https://picsum.photos/seed/${seed}-contrast2/800/480?contrast=1.5&blur=1`,
 ] as const;
 
+/* --- Practice Toggle Switch Style --- */
+interface ToggleSwitchProps {
+    enabled: boolean;
+    setEnabled: (value: boolean) => void;
+}
+
+const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ enabled, setEnabled }) => {
+    return (
+        <div
+            onClick={() => setEnabled(!enabled)}
+            className={`w-14 h-7 flex items-center rounded-full p-1 cursor-pointer transition
+                ${enabled ? "bg-green-500" : "bg-gray-600"}`}
+        >
+            <div
+                className={`bg-white w-5 h-5 rounded-full shadow-md transform transition
+                    ${enabled ? "translate-x-7" : ""}`}
+            />
+        </div>
+    );
+};
 
 /* -------------------------------------------------------------
    MAIN COMPONENT
@@ -116,7 +137,6 @@ export function PositionElements() {
     const [finalPracticeTime, setFinalPracticeTime] = useState<number>(0);
 
     useEffect(() => {
-        // generate 500 unique seeds for the session
         const seeds = Array.from({ length: 500 }, (_, i) => i + 1);
         setAvailableSeeds(shuffleArray(seeds));
     }, []);
@@ -269,7 +289,7 @@ export function PositionElements() {
         setCurrentBid(0);
         setBidStarted(false);
         setShowStartModal(false);
-        setPracticeMode(false); // ★ Practice Mode Feature ★
+        setPracticeMode(false);
 
         setImageUrl("/images/preview.jpg");
         setTiles(generateTiles("/images/preview.jpg"));
@@ -281,12 +301,12 @@ export function PositionElements() {
         setGameActive(false);
     };
 
-    /* ---------- Event Handler for Bid / Start / Practice ---------- */
+    /* ---------- Event Handler for Bid ---------- */
     const handler = useCallback((e: any) => {
         const { amount, gameId, practice } = e?.detail || {};
 
         if (gameId) localStorage.setItem("currentGameId", gameId);
-        setPracticeMode(!!practice); // ★ Practice Mode Feature ★
+        setPracticeMode(!!practice);
         setCurrentBid(amount || 0);
         setBidStarted(true);
         setGameActive(false);
@@ -315,12 +335,12 @@ export function PositionElements() {
         <>
             {/* ----- Practice Toggle Button ----- */}
             {connected && (
-                <div className="flex justify-center gap-3 mt-4 mb-2">
-                    <button
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${practiceMode ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                            }`}
-                        onClick={() => {
-                            const newState = !practiceMode;
+                <div className="flex justify-center items-center gap-3 mt-4 mb-2 practice-mode">
+                    <span className="text-white font-medium">Practice Mode</span>
+
+                    <Switch
+                        enabled={practiceMode}
+                        setEnabled={(newState: boolean) => {
                             setPracticeMode(newState);
 
                             setMoveCount(0);
@@ -332,42 +352,38 @@ export function PositionElements() {
                             if (newState) {
                                 setPracticeType("start");
                                 setShowPracticeModal(true);
-                                loadPuzzleImage();
+                                loadPuzzleImage(false);
                             } else {
                                 setImageUrl("/images/preview.jpg");
                                 setTiles(generateTiles("/images/preview.jpg"));
                             }
                         }}
-                    >
-                        {practiceMode ? "Practice Mode ON" : "Practice Mode OFF"}
-                    </button>
+                    />
                 </div>
             )}
 
-            {/* ----- Difficulty picker ----- */}
-            {
-                connected && (
-                    <div className="flex justify-center gap-3 mt-4 mb-2">
-                        {difficulties.map(d => {
-                            const multiplier = d.level === 'easy' ? '1.2x' : d.level === 'medium' ? '1.5x' : '2.5x';
-                            return (
-                                <button
-                                    key={d.level}
-                                    onClick={() => setDifficulty(d.level)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 ${difficulty === d.level
-                                        ? 'bg-blue-600 text-white shadow-md'
-                                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                        }`}
-                                >
-                                    <span>{d.level.toUpperCase()}</span>
-                                    <span className="text-xs opacity-80">• {multiplier}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                )
-            }
 
+            {/* ----- Difficulty picker ----- */}
+            {connected && (
+                <div className="flex justify-center gap-3 mt-4 mb-2 difficulty-mode">
+                    {difficulties.map(d => {
+                        const multiplier = d.level === 'easy' ? '1.2x' : d.level === 'medium' ? '1.5x' : '2.5x';
+                        return (
+                            <button
+                                key={d.level}
+                                onClick={() => setDifficulty(d.level)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 ${difficulty === d.level
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                    }`}
+                            >
+                                <span>{d.level.toUpperCase()}</span>
+                                <span className="text-xs opacity-80">• {multiplier}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* ----- Counters ----- */}
             {gameActive && (
@@ -454,7 +470,6 @@ export function PositionElements() {
                 onClose={() => setShowPracticeModal(false)}
                 onConfirm={() => {
                     setShowPracticeModal(false);
-
                     if (practiceType === "start") {
                         setGameActive(true);
                     } else {
@@ -463,7 +478,7 @@ export function PositionElements() {
                 }}
             />
 
-            {/* BID CONFIRMED */}
+            {/* BID CONFIRMED MODAL */}
             <Modal
                 show={showStartModal}
                 title="BID LOCKED"
@@ -492,7 +507,7 @@ export function PositionElements() {
                 </div>
             </Modal>
 
-            {/* Victory */}
+            {/* VICTORY MODAL */}
             <Modal
                 show={isWin}
                 title="PUZZLE VICTORY"
@@ -523,7 +538,7 @@ export function PositionElements() {
                 </div>
             </Modal>
 
-            {/* Game Over */}
+            {/* GAME OVER MODAL */}
             <Modal
                 title="Game Over"
                 message="Out of moves or time!"
