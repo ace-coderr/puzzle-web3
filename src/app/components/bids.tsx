@@ -131,7 +131,7 @@ export default function BidComponent({
 
   return (
     <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-black text-white p-8 rounded-3xl shadow-2xl border border-gray-800 w-[380px]">
-      <h2 className="text-3xl font-bold mb-6 text-emerald-400">Place Your Bid</h2>
+      <h2 className="text-3xl font-bold mb-6 text-emerald-400">Play Now</h2>
 
       <div className="grid grid-cols-2 gap-3 mb-5 w-full">
         {quickOptions.map((opt) => (
