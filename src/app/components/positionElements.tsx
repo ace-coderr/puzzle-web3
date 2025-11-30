@@ -376,8 +376,10 @@ export function PositionElements() {
                                 {d.level.toUpperCase()}
 
                                 {/* Hover Reward Tooltip */}
-                                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 text-sm bg-emerald-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 text-sm bg-emerald-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap diffi-pads">
                                     {multiplier} reward
+                                    {/* Arrow */}
+                                    <span className="absolute left-1/2 bottom-full -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-emerald-500"></span>
                                 </span>
                             </div>
 
