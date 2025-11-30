@@ -76,6 +76,7 @@ export default function PracticeModal({ show, onClose, onConfirm, type, moves, t
             onConfirm={onConfirm}
             confirmText={confirmText}
             variant={variant}
+            hideCloseButton={true}
         >
             {content}
         </Modal>
