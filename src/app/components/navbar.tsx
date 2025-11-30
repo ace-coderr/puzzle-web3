@@ -55,25 +55,32 @@ export function Navbar() {
         {/* RIGHT: Actions */}
         {mounted && connected && (
           <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className={`px-5 py-2.5 rounded-xl border transition-all duration-300 shadow-lg font-bold text-sm whitespace-nowrap ${pathname === "/"
+                  ? "bg-blue-600/40 border-blue-500 text-blue-200"
+                  : "bg-blue-600/20 border-blue-500/30 text-blue-300 hover:border-blue-400"
+                }`}
+            >
+              Home
+            </Link>
 
             <Link
               href="/leaderboard"
-              className={`px-5 py-2.5 rounded-xl border transition-all duration-300 shadow-lg font-bold text-sm whitespace-nowrap ${
-                pathname === "/leaderboard"
-                  ? "bg-purple-600/40 border-purple-500 text-purple-200"
-                  : "bg-purple-600/20 border-purple-500/30 text-purple-300 hover:border-purple-400"
-              }`}
+              className={`px-5 py-2.5 rounded-xl border transition-all duration-300 shadow-lg font-bold text-sm whitespace-nowrap ${pathname === "/leaderboard"
+                ? "bg-purple-600/40 border-purple-500 text-purple-200"
+                : "bg-purple-600/20 border-purple-500/30 text-purple-300 hover:border-purple-400"
+                }`}
             >
               Leaderboard
             </Link>
 
             <Link
               href="/reward"
-              className={`px-5 py-2.5 rounded-xl border transition-all duration-300 shadow-lg font-bold text-sm whitespace-nowrap ${
-                pathname === "/reward"
-                  ? "bg-emerald-600/40 border-emerald-500 text-emerald-200"
-                  : "bg-emerald-600/20 border-emerald-500/30 text-emerald-300 hover:border-emerald-400"
-              }`}
+              className={`px-5 py-2.5 rounded-xl border transition-all duration-300 shadow-lg font-bold text-sm whitespace-nowrap ${pathname === "/reward"
+                ? "bg-emerald-600/40 border-emerald-500 text-emerald-200"
+                : "bg-emerald-600/20 border-emerald-500/30 text-emerald-300 hover:border-emerald-400"
+                }`}
             >
               Rewards
             </Link>

@@ -362,24 +362,25 @@ export function PositionElements() {
                 </div>
             )}
 
-
-            {/* ----- Difficulty picker ----- */}
+            {/* ----- Difficulty Hover ----- */}
             {connected && (
-                <div className="flex justify-center gap-3 mt-4 mb-2 difficulty-mode">
+                <div className="flex justify-center gap-4 mt-4 mb-2">
                     {difficulties.map(d => {
                         const multiplier = d.level === 'easy' ? '1.2x' : d.level === 'medium' ? '1.5x' : '2.5x';
                         return (
-                            <button
+                            <div
                                 key={d.level}
                                 onClick={() => setDifficulty(d.level)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1 ${difficulty === d.level
-                                    ? 'bg-blue-600 text-white shadow-md'
-                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                    }`}
-                            >
-                                <span>{d.level.toUpperCase()}</span>
-                                <span className="text-xs opacity-80">• {multiplier}</span>
-                            </button>
+                                className={`    relative group px-5 py-2 rounded-lg text-white cursor-pointer font-medium
+                                ${difficulty === d.level ? "bg-blue-600 shadow-md" : "bg-gray-700 hover:bg-gray-600"} transition`}>
+                                {d.level.toUpperCase()}
+
+                                {/* Hover Reward Tooltip */}
+                                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 text-sm bg-emerald-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                    {multiplier} reward
+                                </span>
+                            </div>
+
                         );
                     })}
                 </div>
