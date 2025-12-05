@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useGameSounds } from "@/hooks/useGameSounds";
 import PracticeModal from "./practiceModal";
-import Switch from "./ui/switch";
 
 export type Tile = {
     id: number;
@@ -155,11 +154,20 @@ export function PositionElements() {
     ] as const;
 
     useEffect(() => {
-        const d = difficulties.find(d => d.level === difficulty)!;
+        if (practiceMode) {
+            setMaxMoves(40);
+            setMaxTime(180);
+            setRewardMultiplier(1.2);
+            return;
+        }
+
+        const d = difficulties.find((d) => d.level === difficulty)!;
         setMaxMoves(d.moves);
         setMaxTime(d.time);
-        setRewardMultiplier(d.level === 'easy' ? 1.2 : d.level === 'medium' ? 1.5 : 2.5);
-    }, [difficulty]);
+        setRewardMultiplier(
+            d.level === "easy" ? 1.2 : d.level === "medium" ? 1.5 : 2.5
+        );
+    }, [difficulty, practiceMode]);
 
     /* ---------- Tile generation ---------- */
     function generateTiles(imageUrl: string): Tile[] {
@@ -334,36 +342,36 @@ export function PositionElements() {
     return (
         <>
             {/* ----- Practice Toggle Button ----- */}
-            {connected && (
-                <div className="flex justify-center items-center gap-3 mt-4 mb-2 practice-mode">
-                    <span className="text-white font-medium">Practice Mode</span>
+            {!practiceMode && (
+                <div className="flex justify-center items-center gap-3 mt-4 mb-4">
+                    <button
+                        onClick={() => {
+                            setPracticeMode(true);
+                            setDifficulty("easy");
+                            setMaxMoves(40);
+                            setMaxTime(180);
 
-                    <Switch
-                        enabled={practiceMode}
-                        setEnabled={(newState: boolean) => {
-                            setPracticeMode(newState);
+                            setPracticeType("start");
+                            setShowPracticeModal(true);
 
+                            loadPuzzleImage(false);
                             setMoveCount(0);
                             setTime(0);
+
                             setIsWin(false);
                             setIsGameOver(false);
                             setGameActive(false);
-
-                            if (newState) {
-                                setPracticeType("start");
-                                setShowPracticeModal(true);
-                                loadPuzzleImage(false);
-                            } else {
-                                setImageUrl("/images/preview.jpg");
-                                setTiles(generateTiles("/images/preview.jpg"));
-                            }
                         }}
-                    />
+                        className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700
+                       text-white font-bold rounded-2xl shadow-lg
+                       hover:scale-105 active:scale-95 transition-all">
+                        Practice Mode
+                    </button>
                 </div>
             )}
 
             {/* ----- Difficulty Hover ----- */}
-            {connected && (
+            {connected && !practiceMode && (
                 <div className="flex justify-center gap-4 mt-4 mb-2">
                     {difficulties.map(d => {
                         const multiplier = d.level === 'easy' ? '1.2x' : d.level === 'medium' ? '1.5x' : '2.5x';
@@ -466,16 +474,18 @@ export function PositionElements() {
             {/* ---------- MODALS ---------- */}
             {/* PRACTICE MODAL */}
             <PracticeModal
-                show={practiceMode && showPracticeModal}
+                show={showPracticeModal}
                 type={practiceType}
                 moves={moveCount}
                 time={finalPracticeTime}
                 onClose={() => setShowPracticeModal(false)}
                 onConfirm={() => {
                     setShowPracticeModal(false);
+
                     if (practiceType === "start") {
                         setGameActive(true);
                     } else {
+                        setPracticeMode(false);
                         handleRestart();
                     }
                 }}
