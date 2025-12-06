@@ -27,11 +27,20 @@ export default function BidComponent({
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // difficulty local state
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+
   const rpcUrl =
     process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
   const connection = new Connection(rpcUrl, "confirmed");
 
   const quickOptions = [0.1, 0.5, 1, 2];
+
+  // dispatch difficulty-change to notify PositionElements
+  const notifyDifficultyChange = (d: 'easy' | 'medium' | 'hard') => {
+    setDifficulty(d);
+    document.dispatchEvent(new CustomEvent("difficulty-change", { detail: d }));
+  };
 
   const handleBid = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) {
@@ -100,6 +109,7 @@ export default function BidComponent({
           amount,
           gameId,
           txSignature,
+          difficulty,
         }),
       });
 
@@ -114,9 +124,11 @@ export default function BidComponent({
 
       // Trigger real-time updates
       document.dispatchEvent(new CustomEvent("recent-bid"));
+
+      // include difficulty in puzzle-restart detail so PositionElements can pick it up
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
-          detail: { walletAddress: fromPubkey.toBase58(), amount, gameId },
+          detail: { walletAddress: fromPubkey.toBase58(), amount, gameId, difficulty },
         })
       );
 
@@ -133,6 +145,24 @@ export default function BidComponent({
     <div className="flex flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-black text-white p-8 rounded-3xl shadow-2xl border border-gray-800 w-[380px]">
       <h2 className="text-3xl font-bold mb-6 text-emerald-400">Play Now</h2>
 
+      {/* Difficulty selector */}
+      <div className="flex gap-3 mb-5">
+        {(['easy', 'medium', 'hard'] as const).map((d) => {
+          const label = d.toUpperCase();
+          const isActive = difficulty === d;
+          return (
+            <button
+              key={d}
+              onClick={() => notifyDifficultyChange(d)}
+              className={`px-4 py-2 rounded-lg font-medium transition ${isActive ? "bg-blue-600 shadow-md" : "bg-gray-800 hover:bg-gray-700"
+                }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 mb-5 w-full">
         {quickOptions.map((opt) => (
           <button
@@ -140,8 +170,8 @@ export default function BidComponent({
             onClick={() => setAmount(opt)}
             disabled={loading}
             className={`py-3 rounded-xl font-semibold transition-all ${amount === opt
-                ? "bg-emerald-600 ring-2 ring-emerald-400 shadow-lg scale-105"
-                : "bg-gray-800 hover:bg-gray-700"
+              ? "bg-emerald-600 ring-2 ring-emerald-400 shadow-lg scale-105"
+              : "bg-gray-800 hover:bg-gray-700"
               } disabled:opacity-50`}
           >
             {opt} SOL

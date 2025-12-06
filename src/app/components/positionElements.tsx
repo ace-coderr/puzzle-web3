@@ -83,27 +83,6 @@ const IMAGE_SOURCES = [
     (seed: number) => `https://picsum.photos/seed/${seed}-contrast2/800/480?contrast=1.5&blur=1`,
 ] as const;
 
-/* --- Practice Toggle Switch Style --- */
-interface ToggleSwitchProps {
-    enabled: boolean;
-    setEnabled: (value: boolean) => void;
-}
-
-const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ enabled, setEnabled }) => {
-    return (
-        <div
-            onClick={() => setEnabled(!enabled)}
-            className={`w-14 h-7 flex items-center rounded-full p-1 cursor-pointer transition
-                ${enabled ? "bg-green-500" : "bg-gray-600"}`}
-        >
-            <div
-                className={`bg-white w-5 h-5 rounded-full shadow-md transform transition
-                    ${enabled ? "translate-x-7" : ""}`}
-            />
-        </div>
-    );
-};
-
 /* -------------------------------------------------------------
    MAIN COMPONENT
    ------------------------------------------------------------- */
@@ -311,13 +290,17 @@ export function PositionElements() {
 
     /* ---------- Event Handler for Bid ---------- */
     const handler = useCallback((e: any) => {
-        const { amount, gameId, practice } = e?.detail || {};
+        const { amount, gameId, practice, difficulty: incomingDifficulty } = e?.detail || {};
 
         if (gameId) localStorage.setItem("currentGameId", gameId);
         setPracticeMode(!!practice);
         setCurrentBid(amount || 0);
         setBidStarted(true);
         setGameActive(false);
+
+        if (incomingDifficulty && (incomingDifficulty === 'easy' || incomingDifficulty === 'medium' || incomingDifficulty === 'hard')) {
+            setDifficulty(incomingDifficulty);
+        }
 
         if (amount > 0 || practice) {
             loadPuzzleImage(true);
@@ -335,6 +318,17 @@ export function PositionElements() {
         return () => document.removeEventListener("puzzle-restart", handler);
     }, [handler, availableSeeds]);
 
+    // Listen for difficulty changes from external UI (e.g. bids.tsx)
+    useEffect(() => {
+        const onDifficultyChange = (e: any) => {
+            const newDiff = e?.detail;
+            if (newDiff && (newDiff === 'easy' || newDiff === 'medium' || newDiff === 'hard')) {
+                setDifficulty(newDiff);
+            }
+        };
+        document.addEventListener("difficulty-change", onDifficultyChange);
+        return () => document.removeEventListener("difficulty-change", onDifficultyChange);
+    }, []);
 
     /* -------------------------------------------------------------
      RENDER
@@ -367,32 +361,6 @@ export function PositionElements() {
                        hover:scale-105 active:scale-95 transition-all">
                         Practice Mode
                     </button>
-                </div>
-            )}
-
-            {/* ----- Difficulty Hover ----- */}
-            {connected && !practiceMode && (
-                <div className="flex justify-center gap-4 mt-4 mb-2">
-                    {difficulties.map(d => {
-                        const multiplier = d.level === 'easy' ? '1.2x' : d.level === 'medium' ? '1.5x' : '2.5x';
-                        return (
-                            <div
-                                key={d.level}
-                                onClick={() => setDifficulty(d.level)}
-                                className={`    relative group px-5 py-2 rounded-lg text-white cursor-pointer font-medium
-                                ${difficulty === d.level ? "bg-blue-600 shadow-md" : "bg-gray-700 hover:bg-gray-600"} transition`}>
-                                {d.level.toUpperCase()}
-
-                                {/* Hover Reward Tooltip */}
-                                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 text-sm bg-emerald-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap diffi-pads">
-                                    {multiplier} reward
-                                    {/* Arrow */}
-                                    <span className="absolute left-1/2 bottom-full -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-emerald-500"></span>
-                                </span>
-                            </div>
-
-                        );
-                    })}
                 </div>
             )}
 
