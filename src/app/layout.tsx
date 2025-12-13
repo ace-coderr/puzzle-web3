@@ -17,14 +17,13 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-// FIXED: viewport & themeColor moved here (Next.js 14+ requirement)
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#0f172a",
 };
 
-// Clean metadata (no viewport/themeColor)
+
 export const metadata: Metadata = {
   title: {
     default: "Puzzle Web3",
