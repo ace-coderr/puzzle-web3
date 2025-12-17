@@ -7,7 +7,7 @@
     text-align: center;
     padding-top: 12px;
     font-size: 24px;
-    font-weight: bold;
+    font-weight: 900;
     font-family: poppins, sans-serif;
     cursor: pointer;
 }
@@ -16,13 +16,35 @@
     color: #FFD700;
 }
 
+/* Bid section styles */
 .bid-section {
     width: 600px;
     height: auto;
     border: 1px solid #ff0000;
     border-radius: 10px;
 }
+.play-now{
+    color: rgb(153, 255, 0);
+    text-align: center;
+    padding-top: 10px;
+    font-size: 17px;
+    font-family: poppins, sans-serif;
+    font-weight: 1000;
+}
+.modes-selector{
+    color: #FFF;
+    padding-top: 10px;
+    padding-bottom: 15px;
+    font-size: 20px;
+    font-family: poppins, sans-serif;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    gap: 60px;
+    justify-content: center;
+}
 
+/* Recent bids section styles */
 .recent-bids-section {
     width: 600px;
     height: auto;

@@ -143,10 +143,10 @@ export default function BidComponent({
 
   return (
     <div className="bid-section">
-      <h2 className="text-3xl font-bold mb-6 text-emerald-400">Play Now</h2>
+      <h2 className="play-now">Play Now</h2>
 
       {/* Difficulty selector */}
-      <div className="flex gap-3 mb-5">
+      <div className="modes-selector">
         {(['easy', 'medium', 'hard'] as const).map((d) => {
           const label = d.toUpperCase();
           const isActive = difficulty === d;
@@ -154,9 +154,7 @@ export default function BidComponent({
             <button
               key={d}
               onClick={() => notifyDifficultyChange(d)}
-              className={`px-4 py-2 rounded-lg font-medium transition ${isActive ? "bg-blue-600 shadow-md" : "bg-gray-800 hover:bg-gray-700"
-                }`}
-            >
+              className={`px-4 py-2 rounded-lg font-medium transition ${isActive ? "bg-blue-600 shadow-md" : "bg-gray-800 hover:bg-gray-700"}`}>
               {label}
             </button>
           );
