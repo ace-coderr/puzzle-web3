@@ -89,7 +89,7 @@ const IMAGE_SOURCES = [
 export function PositionElements() {
     const { publicKey, connected } = useWallet();
     const router = useRouter();
-    const { playWin, playLose, playClaim } = useGameSounds();
+    const { playWin, playLose } = useGameSounds();
 
     // CORE STATES
     const [imageUrl, setImageUrl] = useState<string>("/images/preview.jpg");
