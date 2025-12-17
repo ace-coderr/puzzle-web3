@@ -146,7 +146,7 @@ export default function BidComponent({
       <h2 className="play-now">Play Now</h2>
 
       {/* Difficulty selector */}
-      <div className="modes-selector">
+      <div className="modes-selector text-white">
         {(['easy', 'medium', 'hard'] as const).map((d) => {
           const label = d.toUpperCase();
           const isActive = difficulty === d;
