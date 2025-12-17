@@ -1,3 +1,16 @@
 .puzzle-board {
     padding: 80px;
 }
+
+.practice-mode1{
+    color: #FFF;
+    text-align: center;
+    padding-top: 12px;
+    font-size: 24px;
+    font-weight: bold;
+    font-family: poppins, sans-serif;
+    cursor: pointer;
+}
+.practice-mode1:hover {
+    color: #FFD700;
+}
