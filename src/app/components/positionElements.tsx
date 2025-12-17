@@ -108,7 +108,7 @@ export function PositionElements() {
 
     const [availableSeeds, setAvailableSeeds] = useState<number[]>([]);
 
-    // ★ Practice Mode Feature ★
+    // Practice Mode
     const [practiceMode, setPracticeMode] = useState<boolean>(false);
     const [showPracticeModal, setShowPracticeModal] = useState(false);
     const [practiceType, setPracticeType] = useState<"start" | "win" | "gameover">("start");
@@ -318,7 +318,7 @@ export function PositionElements() {
         return () => document.removeEventListener("puzzle-restart", handler);
     }, [handler, availableSeeds]);
 
-    // Listen for difficulty changes from external UI (e.g. bids.tsx)
+    // Listen for difficulty changes
     useEffect(() => {
         const onDifficultyChange = (e: any) => {
             const newDiff = e?.detail;
