@@ -2,7 +2,7 @@
     padding: 80px;
 }
 
-.practice-mode1{
+.practice-mode1 {
     color: #FFF;
     text-align: center;
     padding-top: 12px;
@@ -11,6 +11,21 @@
     font-family: poppins, sans-serif;
     cursor: pointer;
 }
+
 .practice-mode1:hover {
     color: #FFD700;
+}
+
+.bid-section {
+    width: 600px;
+    height: auto;
+    border: 1px solid #ff0000;
+    border-radius: 10px;
+}
+
+.recent-bids-section {
+    width: 600px;
+    height: auto;
+    border: 1px solid #ff0000;
+    border-radius: 10px;
 }

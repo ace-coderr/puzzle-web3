@@ -46,7 +46,7 @@ function RecentActivity() {
     }
 
     return (
-        <div className="bg-gray-900/90 rounded-2xl p-6 border border-gray-800 w-full max-w-md">
+        <div className="recent-bids-section">
             <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
                 Recent Activity
             </h2>
