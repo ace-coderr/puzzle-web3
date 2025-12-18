@@ -144,7 +144,7 @@ export default function BidComponent({
   return (
     <div className="bid-section">
       <h2 className="play-now">Play Now</h2>
-
+<hr className="hr"/>
       {/* Difficulty selector */}
       <div className="modes-selector text-white">
         {(['easy', 'medium', 'hard'] as const).map((d) => {
@@ -187,7 +187,7 @@ export default function BidComponent({
       <button
         onClick={handleBid}
         disabled={loading || !amount}
-        className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xl rounded-xl shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        className="place-bid-btn"
       >
         {loading ? (
           <span className="flex items-center justify-center gap-3">
@@ -199,7 +199,7 @@ export default function BidComponent({
         )}
       </button>
 
-      <p className="text-xs text-gray-500 mt-4 text-center">
+      <p className="bid-info">
         Bids go to treasury • Real SOL • Real wins
       </p>
     </div>
