@@ -337,7 +337,7 @@ export function PositionElements() {
         <>
             {/* ----- Practice Toggle Button ----- */}
             {!practiceMode && (
-                <div className="practice-mode1">
+                <div>
                     <button
                         onClick={() => {
                             setPracticeMode(true);
@@ -356,7 +356,8 @@ export function PositionElements() {
                             setIsGameOver(false);
                             setGameActive(false);
                         }}
-                    >Practice Mode
+                        className="practice-mode1">
+                        Practice Mode
                     </button>
                 </div>
             )}
