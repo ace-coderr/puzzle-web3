@@ -154,7 +154,7 @@ export default function BidComponent({
             <button
               key={d}
               onClick={() => notifyDifficultyChange(d)}
-              className={`mode ${isActive ? "bg-blue-600 border-1" : ""}`}>
+              className={`mode ${isActive ? "bg-blue-900 border-1" : ""}`}>
               {label}
             </button>
           );
