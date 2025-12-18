@@ -167,7 +167,7 @@ export default function BidComponent({
             key={opt}
             onClick={() => setAmount(opt)}
             disabled={loading}
-            className={`quick-options2 ${amount === opt ? "bg-emerald-600 ring-2 ring-emerald-400 shadow-lg scale-105" : ""} disabled:opacity-50`}>
+            className={`quick-options2 ${amount === opt ? "bg-emerald-600 ring-2 ring-emerald-400 shadow-lg scale-105" : " bg-gray-900 border-1"} disabled:opacity-50`}>
             {opt} SOL
           </button>
         ))}
@@ -181,7 +181,7 @@ export default function BidComponent({
         value={amount ?? ""}
         onChange={(e) => setAmount(parseFloat(e.target.value) || null)}
         disabled={loading}
-        className="w-full p-4 text-center text-lg rounded-xl bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-6"
+        className="custom-amount-input"
       />
 
       <button
