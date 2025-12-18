@@ -10,7 +10,7 @@ type Bid = {
 };
 
 function RecentActivity() {
-    console.log("🔄 RecentActivity render"); // for debugging
+    console.log("🔄 RecentActivity render");
 
     const [bids, setBids] = useState<Bid[]>([]);
     const [loading, setLoading] = useState(true);

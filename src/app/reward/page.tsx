@@ -224,7 +224,7 @@ export default function RewardPage() {
           )}
         </section>
 
-        {/* Empty State - No Games */}
+        {/* Empty State */}
         {results.length === 0 && (
           <div className="text-center py-20">
             <p className="text-gray-400 text-lg mb-6">No games played yet.</p>
@@ -254,12 +254,12 @@ export default function RewardPage() {
             {modal.tx}
           </p>
           <a
-            href={`https://solana.fm/tx/${modal.tx}?cluster=devnet`}
+            href={`https://orbexplorer.com/tx/${modal.tx}?cluster=devnet`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-lg"
           >
-            View on Solana.fm (Devnet)
+            View on Orb Explorer (Devnet)
           </a>
         </div>
       </Modal>
