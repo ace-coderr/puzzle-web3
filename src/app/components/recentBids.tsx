@@ -51,7 +51,9 @@ function RecentActivity() {
                 Recent Activity
             </h2>
 
-            <div className="bg-black/40 rounded-xl p-4 font-mono text-sm">
+            <hr className="hr" />
+
+            <div className="recent-bids-list">
                 {bids.length === 0 ? (
                     <p className="text-center text-gray-500 py-8">
                         No bids yet. Be the first!

@@ -22,6 +22,7 @@
     height: auto;
     border: 1px solid #fff;
     border-radius: 10px;
+    margin-bottom: 1%;
 }
 
 .play-now {
@@ -124,6 +125,13 @@
 .recent-bids-section {
     width: 600px;
     height: auto;
-    border: 1px solid #ff0000;
+    border: 1px solid #fff;
     border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 1%;
+}
+
+.recent-bids-list {
+    max-height: 300px;
+    overflow-y: auto;
 }

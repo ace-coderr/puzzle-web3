@@ -21,7 +21,7 @@ export default function HomeComponent() {
       <PositionElements />
 
       {wallet.publicKey ? (
-        <div className="flex justify-center gap-10 mt-10">
+        <div className="flex justify-center  gap-10 mt-10">
           <BidComponent wallet={wallet} />
           <RecentActivity />
         </div>
