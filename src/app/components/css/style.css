@@ -45,10 +45,10 @@
 }
 
 .mode {
-    border-radius: 10px;
+    border-radius: 28px;
     font-family: poppins, sans-serif;
     font-size: 18px;
-    padding: 8px;
+    padding: 6px;
 }
 
 .mode:hover {
