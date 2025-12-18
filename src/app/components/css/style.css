@@ -40,6 +40,8 @@
     font-weight: 900;
     cursor: pointer;
     display: flex;
+        grid-template-columns: repeat(2, 1fr);
+
     gap: 60px;
     justify-content: center;
 }
@@ -54,6 +56,24 @@
 .mode:hover {
     color: #FFD700;
     background-color: rgb(12, 12, 139);
+}
+
+.quick-options1{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px 20px 20px 20px;
+}
+
+.quick-options2{
+    border: 1px solid #fff;
+    border-radius: 10px;
+    color: #FFF;
+}
+
+.quick-options2:hover {
+    background-color: rgb(12, 12, 139);
+    color: #FFD700;
 }
 
 /* Recent bids section styles */

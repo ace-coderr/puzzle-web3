@@ -161,17 +161,13 @@ export default function BidComponent({
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-5 w-full">
+      <div className="quick-options1">
         {quickOptions.map((opt) => (
           <button
             key={opt}
             onClick={() => setAmount(opt)}
             disabled={loading}
-            className={`py-3 rounded-xl font-semibold transition-all ${amount === opt
-              ? "bg-emerald-600 ring-2 ring-emerald-400 shadow-lg scale-105"
-              : "bg-gray-800 hover:bg-gray-700"
-              } disabled:opacity-50`}
-          >
+            className={`quick-options2 ${amount === opt ? "bg-emerald-600 ring-2 ring-emerald-400 shadow-lg scale-105" : ""} disabled:opacity-50`}>
             {opt} SOL
           </button>
         ))}
