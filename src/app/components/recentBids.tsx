@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useState, memo } from "react";
+
+import { useEffect, useState, useCallback, memo } from "react";
+
 type Bid = {
     id: string;
     wallet: string;
@@ -7,14 +9,16 @@ type Bid = {
     createdAt: string;
     gameId: string;
 };
+
 function RecentActivity() {
     console.log("🔄 RecentActivity render");
+
     const [bids, setBids] = useState<Bid[]>([]);
     const [loading, setLoading] = useState(true);
-    const fetchBids = async () => {
+
+    const fetchBids = useCallback(async () => {
         try {
             const res = await fetch("/api/bids");
-            if (!res.ok) throw new Error();
             const data = await res.json();
             setBids(Array.isArray(data) ? data : data.bids || []);
         } catch {
@@ -22,64 +26,66 @@ function RecentActivity() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
     useEffect(() => {
         fetchBids();
-        const handler = () => fetchBids();
-        document.addEventListener("recent-bid", handler);
-        return () => document.removeEventListener("recent-bid", handler);
-    }, []);
+        document.addEventListener("recent-bid", fetchBids);
+        return () =>
+            document.removeEventListener("recent-bid", fetchBids);
+    }, [fetchBids]);
+
     const formatRelativeTime = (dateStr: string) => {
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return "Just now";
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffSecs = Math.floor(diffMs / 1000);
-        if (diffSecs < 60) return `${diffSecs} secs ago`;
-        const diffMins = Math.floor(diffSecs / 60);
-        if (diffMins < 60) return `${diffMins} mins ago`;
-        const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `${diffHours} hours ago`;
-        const diffDays = Math.floor(diffHours / 24);
-        return `${diffDays} days ago`;
+        const diff = Date.now() - new Date(dateStr).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return "Just now";
+        if (mins < 60) return `${mins} mins ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours} hours ago`;
+        return `${Math.floor(hours / 24)} days ago`;
     };
+
     if (loading) {
         return (
-            <div className="bg-gray-900/90 rounded-2xl p-6 border border-gray-800 w-full max-w-md">
-                <p className="text-center text-gray-400">Loading activity...</p>
+            <div className="recent-bids-section">
+                <p className="text-center text-gray-400">
+                    Loading activity...
+                </p>
             </div>
         );
     }
+
     return (
         <div className="recent-bids-section">
             <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
                 Recent Activity
             </h2>
             <hr className="hr" />
-            <div className="recent-bids-list">
-                {bids.length === 0 ? (
-                    <p className="text-center text-gray-500 py-8">
-                        No bids yet. Be the first!
-                    </p>
-                ) : (
-                    <div className="space-y-3">
-                        {bids.map((bid) => (
-                            <div
-                                key={bid.id}
-                                className="flex justify-between text-gray-300"
-                            >
-                                <span>{bid.wallet}</span>
-                                <span className="text-emerald-400 font-bold">
-                                    {bid.amount} SOL
-                                </span>
-                                <span className="text-gray-500 text-xs">{formatRelativeTime(bid.createdAt)}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+
+            {bids.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                    No bids yet.
+                </p>
+            ) : (
+                <div className="space-y-3">
+                    {bids.map((bid) => (
+                        <div
+                            key={bid.id}
+                            className="flex justify-between text-gray-300"
+                        >
+                            <span>{bid.wallet}</span>
+                            <span className="text-emerald-400 font-bold">
+                                {bid.amount} SOL
+                            </span>
+                            <span className="text-gray-500 text-xs">
+                                {formatRelativeTime(bid.createdAt)}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
-/** 👇 THIS is the important line */
+
 export default memo(RecentActivity);

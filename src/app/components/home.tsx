@@ -6,13 +6,14 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import "./css/style.css";
 import { PositionElements } from "./positionElements";
 import BidComponent from "./bids";
-import RecentActivity from "./recentBids";
 
 export default function HomeComponent() {
   const wallet = useWallet();
   const [hasMounted, setHasMounted] = useState(false);
 
-  useEffect(() => setHasMounted(true), []);
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   if (!hasMounted) return null;
 
@@ -21,9 +22,8 @@ export default function HomeComponent() {
       <PositionElements />
 
       {wallet.publicKey ? (
-        <div className="flex justify-center  gap-10 mt-10">
+        <div className="flex justify-center mt-10">
           <BidComponent wallet={wallet} />
-          <RecentActivity />
         </div>
       ) : (
         <div className="mt-10 text-center text-white text-lg">

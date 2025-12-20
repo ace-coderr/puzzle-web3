@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import {
   Connection,
@@ -8,80 +9,81 @@ import {
   PublicKey,
 } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
+import RecentActivity from "./recentBids";
+
 type BidComponentProps = {
   wallet: WalletContextState;
   onBalanceUpdate?: (balance: number) => void;
 };
-// Treasury wallet
+
 const TREASURY_WALLET =
   process.env.NEXT_PUBLIC_TREASURY_WALLET ||
   "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
+
 export default function BidComponent({
   wallet,
   onBalanceUpdate,
 }: BidComponentProps) {
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  // difficulty local state
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [difficulty, setDifficulty] =
+    useState<"easy" | "medium" | "hard">("medium");
+
   const rpcUrl =
     process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
   const connection = new Connection(rpcUrl, "confirmed");
+
   const quickOptions = [0.1, 0.5, 1, 2];
-  // dispatch difficulty-change to notify PositionElements
-  const notifyDifficultyChange = (d: 'easy' | 'medium' | 'hard') => {
+
+  const notifyDifficultyChange = (d: "easy" | "medium" | "hard") => {
     setDifficulty(d);
-    document.dispatchEvent(new CustomEvent("difficulty-change", { detail: d }));
+    document.dispatchEvent(
+      new CustomEvent("difficulty-change", { detail: d })
+    );
   };
+
   const handleBid = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) {
       alert("Please connect your wallet!");
       return;
     }
+
     if (!amount || amount <= 0) {
       alert("Enter a valid bid amount.");
       return;
     }
+
     setLoading(true);
+
     try {
       const fromPubkey = wallet.publicKey;
       const toPubkey = new PublicKey(TREASURY_WALLET);
       const lamports = Math.round(amount * LAMPORTS_PER_SOL);
-      // Build transaction
-      const transaction = new Transaction();
-      transaction.add(
+
+      const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey,
           toPubkey,
           lamports,
         })
       );
-      // Get fresh blockhash
-      let blockhash;
-      for (let i = 0; i < 3; i++) {
-        try {
-          blockhash = await connection.getLatestBlockhash();
-          break;
-        } catch (err) {
-          if (i === 2) throw err;
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-      }
-      transaction.recentBlockhash = blockhash!.blockhash;
+
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
       transaction.feePayer = fromPubkey;
-      // Sign & send
+
       const signedTx = await wallet.signTransaction(transaction);
-      const txSignature = await connection.sendRawTransaction(signedTx.serialize(), {
-        skipPreflight: false,
-        maxRetries: 3,
-      });
-      console.log("Bid transaction sent:", txSignature);
+      const txSignature = await connection.sendRawTransaction(
+        signedTx.serialize()
+      );
+
       await connection.confirmTransaction(txSignature, "confirmed");
-      // Generate gameId
-      const gameId = `game-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem("currentGameId", gameId);
-      // Save bid to backend
-      const res = await fetch("/api/bids", {
+
+      const gameId = `game-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
+
+      await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -92,86 +94,95 @@ export default function BidComponent({
           difficulty,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save bid");
-      // Update balance
+
       if (onBalanceUpdate) {
         const balance = await connection.getBalance(fromPubkey);
         onBalanceUpdate(balance / LAMPORTS_PER_SOL);
       }
-      // Trigger real-time updates
+
       document.dispatchEvent(new CustomEvent("recent-bid"));
-      // include difficulty in puzzle-restart detail so PositionElements can pick it up
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
-          detail: { walletAddress: fromPubkey.toBase58(), amount, gameId, difficulty },
+          detail: {
+            walletAddress: fromPubkey.toBase58(),
+            amount,
+            gameId,
+            difficulty,
+          },
         })
       );
-      alert(`Success! ${amount} SOL bid placed. Game starting...`);
+
+      alert(`Success! ${amount} SOL bid placed.`);
     } catch (err: any) {
-      console.error("Bid failed:", err);
-      alert(`Transaction failed: ${err.message || "Network error"}`);
+      console.error(err);
+      alert("Transaction failed.");
     } finally {
       setLoading(false);
     }
   };
+
   return (
-    <div className="bid-section">
-      <h2 className="play-now">Play Now</h2>
-<hr className="hr"/>
-      {/* Difficulty selector */}
-      <div className="modes-selector text-white">
-        {(['easy', 'medium', 'hard'] as const).map((d) => {
-          const label = d.toUpperCase();
-          const isActive = difficulty === d;
-          return (
+    <div className="flex gap-10">
+      {/* BID SECTION */}
+      <div className="bid-section">
+        <h2 className="play-now">Play Now</h2>
+        <hr className="hr" />
+
+        <div className="modes-selector text-white">
+          {(["easy", "medium", "hard"] as const).map((d) => (
             <button
               key={d}
               onClick={() => notifyDifficultyChange(d)}
-              className={`mode ${isActive ? "bg-blue-900 border-1" : ""}`}>
-              {label}
+              className={`mode ${difficulty === d ? "bg-blue-900" : ""
+                }`}
+            >
+              {d.toUpperCase()}
             </button>
-          );
-        })}
+          ))}
+        </div>
+
+        <div className="quick-options1">
+          {quickOptions.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setAmount(opt)}
+              disabled={loading}
+              className={`quick-options2 ${amount === opt ? "bg-emerald-600" : "bg-gray-900"
+                }`}
+            >
+              {opt} SOL
+            </button>
+          ))}
+        </div>
+
+        <input
+          type="number"
+          step="0.001"
+          min="0.001"
+          placeholder="Or enter custom amount"
+          value={amount ?? ""}
+          onChange={(e) =>
+            setAmount(parseFloat(e.target.value) || null)
+          }
+          disabled={loading}
+          className="custom-amount-input"
+        />
+
+        <button
+          onClick={handleBid}
+          disabled={loading || !amount}
+          className="place-bid-btn"
+        >
+          {loading ? "Processing..." : "Place Bid & Play"}
+        </button>
+
+        <p className="bid-info">
+          Bids go to treasury • Real SOL • Real wins
+        </p>
       </div>
-      <div className="quick-options1">
-        {quickOptions.map((opt) => (
-          <button
-            key={opt}
-            onClick={() => setAmount(opt)}
-            disabled={loading}
-            className={`quick-options2 ${amount === opt ? "bg-emerald-600 ring-2 ring-emerald-400 shadow-lg scale-105" : " bg-gray-900 border-1"} disabled:opacity-50`}>
-            {opt} SOL
-          </button>
-        ))}
-      </div>
-      <input
-        type="number"
-        step="0.001"
-        min="0.001"
-        placeholder="Or enter custom amount"
-        value={amount ?? ""}
-        onChange={(e) => setAmount(parseFloat(e.target.value) || null)}
-        disabled={loading}
-        className="custom-amount-input"
-      />
-      <button
-        onClick={handleBid}
-        disabled={loading || !amount}
-        className="place-bid-btn"
-      >
-        {loading ? (
-          <span className="flex items-center justify-center gap-3">
-            <span className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></span>
-            Processing...
-          </span>
-        ) : (
-          "Place Bid & Play"
-        )}
-      </button>
-      <p className="bid-info">
-        Bids go to treasury • Real SOL • Real wins
-      </p>
+
+      {/* RECENT ACTIVITY */}
+      <RecentActivity />
     </div>
   );
 }
