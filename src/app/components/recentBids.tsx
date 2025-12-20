@@ -4,7 +4,7 @@ type Bid = {
     id: string;
     wallet: string;
     amount: number;
-    timeDate: string;
+    createdAt: string;
     gameId: string;
 };
 function RecentActivity() {
@@ -29,6 +29,20 @@ function RecentActivity() {
         document.addEventListener("recent-bid", handler);
         return () => document.removeEventListener("recent-bid", handler);
     }, []);
+    const formatRelativeTime = (dateStr: string) => {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return "Just now";
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffSecs = Math.floor(diffMs / 1000);
+        if (diffSecs < 60) return `${diffSecs} secs ago`;
+        const diffMins = Math.floor(diffSecs / 60);
+        if (diffMins < 60) return `${diffMins} mins ago`;
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours < 24) return `${diffHours} hours ago`;
+        const diffDays = Math.floor(diffHours / 24);
+        return `${diffDays} days ago`;
+    };
     if (loading) {
         return (
             <div className="bg-gray-900/90 rounded-2xl p-6 border border-gray-800 w-full max-w-md">
@@ -58,7 +72,7 @@ function RecentActivity() {
                                 <span className="text-emerald-400 font-bold">
                                     {bid.amount} SOL
                                 </span>
-                                <span className="text-gray-500 text-xs">{bid.timeDate}</span>
+                                <span className="text-gray-500 text-xs">{formatRelativeTime(bid.createdAt)}</span>
                             </div>
                         ))}
                     </div>

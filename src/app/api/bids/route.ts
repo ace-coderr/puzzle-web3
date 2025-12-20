@@ -16,18 +16,11 @@ export async function GET() {
     });
     const formatted = bids.map((b) => ({
       id: b.id,
-      wallet: b.user.walletAddress 
+      wallet: b.user.walletAddress
         ? `${b.user.walletAddress.slice(0, 4)}...${b.user.walletAddress.slice(-4)}`
         : "Anon",
       amount: Number(b.amount),
-      timeDate: b.createdAt.toLocaleString("en-GB", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }),
+      createdAt: b.createdAt.toISOString(),
       gameId: b.gameResult.gameId,
     }));
     return NextResponse.json(formatted);
@@ -39,7 +32,7 @@ export async function GET() {
 // POST — Create bid
 export async function POST(req: Request) {
   try {
-    const { walletAddress, amount, gameId, txSignature } = await req.json();
+    const { walletAddress, amount, gameId, txSignature, difficulty } = await req.json();
     if (!walletAddress || !amount || !gameId || !txSignature) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
@@ -53,6 +46,7 @@ export async function POST(req: Request) {
         gameId,
         userId: user.id,
         bidding: new Decimal(amount),
+        difficulty: difficulty || "medium",
       },
     });
     const bid = await prisma.bid.create({
