@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import {
   Connection,
@@ -9,60 +8,47 @@ import {
   PublicKey,
 } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
-
 type BidComponentProps = {
   wallet: WalletContextState;
   onBalanceUpdate?: (balance: number) => void;
 };
-
 // Treasury wallet
 const TREASURY_WALLET =
   process.env.NEXT_PUBLIC_TREASURY_WALLET ||
   "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
-
 export default function BidComponent({
   wallet,
   onBalanceUpdate,
 }: BidComponentProps) {
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-
   // difficulty local state
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-
   const rpcUrl =
     process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
   const connection = new Connection(rpcUrl, "confirmed");
-
   const quickOptions = [0.1, 0.5, 1, 2];
-
   // dispatch difficulty-change to notify PositionElements
   const notifyDifficultyChange = (d: 'easy' | 'medium' | 'hard') => {
     setDifficulty(d);
     document.dispatchEvent(new CustomEvent("difficulty-change", { detail: d }));
   };
-
   const handleBid = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) {
       alert("Please connect your wallet!");
       return;
     }
-
     if (!amount || amount <= 0) {
       alert("Enter a valid bid amount.");
       return;
     }
-
     setLoading(true);
-
     try {
       const fromPubkey = wallet.publicKey;
       const toPubkey = new PublicKey(TREASURY_WALLET);
       const lamports = Math.round(amount * LAMPORTS_PER_SOL);
-
       // Build transaction
       const transaction = new Transaction();
-
       transaction.add(
         SystemProgram.transfer({
           fromPubkey,
@@ -70,7 +56,6 @@ export default function BidComponent({
           lamports,
         })
       );
-
       // Get fresh blockhash
       let blockhash;
       for (let i = 0; i < 3; i++) {
@@ -82,24 +67,19 @@ export default function BidComponent({
           await new Promise((r) => setTimeout(r, 1000));
         }
       }
-
       transaction.recentBlockhash = blockhash!.blockhash;
       transaction.feePayer = fromPubkey;
-
       // Sign & send
       const signedTx = await wallet.signTransaction(transaction);
       const txSignature = await connection.sendRawTransaction(signedTx.serialize(), {
         skipPreflight: false,
         maxRetries: 3,
       });
-
       console.log("Bid transaction sent:", txSignature);
       await connection.confirmTransaction(txSignature, "confirmed");
-
       // Generate gameId
       const gameId = `game-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem("currentGameId", gameId);
-
       // Save bid to backend
       const res = await fetch("/api/bids", {
         method: "POST",
@@ -112,26 +92,21 @@ export default function BidComponent({
           difficulty,
         }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save bid");
-
       // Update balance
       if (onBalanceUpdate) {
         const balance = await connection.getBalance(fromPubkey);
         onBalanceUpdate(balance / LAMPORTS_PER_SOL);
       }
-
       // Trigger real-time updates
       document.dispatchEvent(new CustomEvent("recent-bid"));
-
       // include difficulty in puzzle-restart detail so PositionElements can pick it up
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
           detail: { walletAddress: fromPubkey.toBase58(), amount, gameId, difficulty },
         })
       );
-
       alert(`Success! ${amount} SOL bid placed. Game starting...`);
     } catch (err: any) {
       console.error("Bid failed:", err);
@@ -140,7 +115,6 @@ export default function BidComponent({
       setLoading(false);
     }
   };
-
   return (
     <div className="bid-section">
       <h2 className="play-now">Play Now</h2>
@@ -160,7 +134,6 @@ export default function BidComponent({
           );
         })}
       </div>
-
       <div className="quick-options1">
         {quickOptions.map((opt) => (
           <button
@@ -172,7 +145,6 @@ export default function BidComponent({
           </button>
         ))}
       </div>
-
       <input
         type="number"
         step="0.001"
@@ -183,7 +155,6 @@ export default function BidComponent({
         disabled={loading}
         className="custom-amount-input"
       />
-
       <button
         onClick={handleBid}
         disabled={loading || !amount}
@@ -198,7 +169,6 @@ export default function BidComponent({
           "Place Bid & Play"
         )}
       </button>
-
       <p className="bid-info">
         Bids go to treasury • Real SOL • Real wins
       </p>

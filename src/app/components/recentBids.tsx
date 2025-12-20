@@ -1,20 +1,16 @@
 "use client";
-
 import { useEffect, useState, memo } from "react";
-
 type Bid = {
     id: string;
     wallet: string;
     amount: number;
-    date: string;
+    timeDate: string;
+    gameId: string;
 };
-
 function RecentActivity() {
     console.log("🔄 RecentActivity render");
-
     const [bids, setBids] = useState<Bid[]>([]);
     const [loading, setLoading] = useState(true);
-
     const fetchBids = async () => {
         try {
             const res = await fetch("/api/bids");
@@ -27,16 +23,12 @@ function RecentActivity() {
             setLoading(false);
         }
     };
-
     useEffect(() => {
         fetchBids();
-
         const handler = () => fetchBids();
         document.addEventListener("recent-bid", handler);
-
         return () => document.removeEventListener("recent-bid", handler);
     }, []);
-
     if (loading) {
         return (
             <div className="bg-gray-900/90 rounded-2xl p-6 border border-gray-800 w-full max-w-md">
@@ -44,15 +36,12 @@ function RecentActivity() {
             </div>
         );
     }
-
     return (
         <div className="recent-bids-section">
             <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
                 Recent Activity
             </h2>
-
             <hr className="hr" />
-
             <div className="recent-bids-list">
                 {bids.length === 0 ? (
                     <p className="text-center text-gray-500 py-8">
@@ -69,7 +58,7 @@ function RecentActivity() {
                                 <span className="text-emerald-400 font-bold">
                                     {bid.amount} SOL
                                 </span>
-                                <span className="text-gray-500 text-xs">{bid.date}</span>
+                                <span className="text-gray-500 text-xs">{bid.timeDate}</span>
                             </div>
                         ))}
                     </div>
@@ -78,6 +67,5 @@ function RecentActivity() {
         </div>
     );
 }
-
 /** 👇 THIS is the important line */
 export default memo(RecentActivity);

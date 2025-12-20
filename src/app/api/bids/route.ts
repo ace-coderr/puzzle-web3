@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
-
 export const dynamic = "force-dynamic";
-
 // GET — Recent bids for RecentActivity component
 export async function GET() {
   try {
@@ -16,42 +14,40 @@ export async function GET() {
         gameResult: { select: { gameId: true } },
       },
     });
-
     const formatted = bids.map((b) => ({
       id: b.id,
-      wallet: b.user.walletAddress
+      wallet: b.user.walletAddress 
         ? `${b.user.walletAddress.slice(0, 4)}...${b.user.walletAddress.slice(-4)}`
         : "Anon",
       amount: Number(b.amount),
-      date: b.createdAt.toLocaleDateString("en-NG", {
+      timeDate: b.createdAt.toLocaleString("en-GB", {
         day: "numeric",
         month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
       }),
       gameId: b.gameResult.gameId,
     }));
-
     return NextResponse.json(formatted);
   } catch (error) {
     console.error("GET /api/bids failed:", error);
     return NextResponse.json([], { status: 500 });
   }
 }
-
 // POST — Create bid
 export async function POST(req: Request) {
   try {
     const { walletAddress, amount, gameId, txSignature } = await req.json();
-
     if (!walletAddress || !amount || !gameId || !txSignature) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
-
     const user = await prisma.user.upsert({
       where: { walletAddress },
       update: {},
       create: { walletAddress },
     });
-
     const gameResult = await prisma.gameResult.create({
       data: {
         gameId,
@@ -59,7 +55,6 @@ export async function POST(req: Request) {
         bidding: new Decimal(amount),
       },
     });
-
     const bid = await prisma.bid.create({
       data: {
         gameResultId: gameResult.gameId,
@@ -69,13 +64,11 @@ export async function POST(req: Request) {
         txSignature,
       },
     });
-
     // Decrease balance
     await prisma.user.update({
       where: { id: user.id },
       data: { balance: { decrement: new Decimal(amount) } },
     });
-
     // Log transaction
     await prisma.transaction.create({
       data: {
@@ -87,12 +80,10 @@ export async function POST(req: Request) {
         txSignature,
       },
     });
-
     // REAL-TIME UPDATE
     if (typeof document !== "undefined") {
       document.dispatchEvent(new CustomEvent("recent-bid"));
     }
-
     return NextResponse.json({ success: true, bid });
   } catch (error: any) {
     console.error("POST /api/bids failed:", error);
