@@ -8,7 +8,7 @@ export async function GET() {
     const bids = await prisma.bid.findMany({
       where: { status: "SUCCESS" },
       orderBy: { createdAt: "desc" },
-      take: 20,
+      take: 10,
       include: {
         user: {
           select: { walletAddress: true },
