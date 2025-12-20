@@ -113,7 +113,7 @@ export default function BidComponent({
       );
 
       alert(`Success! ${amount} SOL bid placed.`);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       alert("Transaction failed.");
     } finally {
@@ -122,7 +122,7 @@ export default function BidComponent({
   };
 
   return (
-    <div className="flex gap-10">
+    <div className="flex flex-col gap-10 max-w-5xlxl w-full">
       {/* BID SECTION */}
       <div className="bid-section">
         <h2 className="play-now">Play Now</h2>
@@ -133,8 +133,7 @@ export default function BidComponent({
             <button
               key={d}
               onClick={() => notifyDifficultyChange(d)}
-              className={`mode ${difficulty === d ? "bg-blue-900" : ""
-                }`}
+              className={`mode ${difficulty === d ? "bg-blue-900" : ""}`}
             >
               {d.toUpperCase()}
             </button>
@@ -147,8 +146,9 @@ export default function BidComponent({
               key={opt}
               onClick={() => setAmount(opt)}
               disabled={loading}
-              className={`quick-options2 ${amount === opt ? "bg-emerald-600" : "bg-gray-900"
-                }`}
+              className={`quick-options2 ${
+                amount === opt ? "bg-emerald-600" : "bg-gray-900"
+              }`}
             >
               {opt} SOL
             </button>
@@ -181,7 +181,7 @@ export default function BidComponent({
         </p>
       </div>
 
-      {/* RECENT ACTIVITY */}
+      {/* RECENT ACTIVITY UNDER BID */}
       <RecentActivity />
     </div>
   );
