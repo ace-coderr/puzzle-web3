@@ -1,8 +1,39 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
+import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+
 export const dynamic = "force-dynamic";
-// GET — Recent bids for RecentActivity component
+
+const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+
+// Helper to verify tx (optional but recommended to prevent fake bids)
+async function verifyTxSignature(txSignature: string, walletAddress: string, amount: number) {
+  try {
+    const tx = await connection.getParsedTransaction(txSignature, { commitment: "confirmed" });
+    if (!tx) throw new Error("Transaction not found");
+    
+    // Basic validation: Check if tx involves the wallet and matches amount
+    const fromAccount = tx.transaction.message.accountKeys[0].pubkey.toString();
+    const transferInstruction = tx.transaction.message.instructions.find(inst => inst.programId.toString() === "11111111111111111111111111111111");
+    
+    if (!transferInstruction || !('parsed' in transferInstruction)) {
+      throw new Error("No parsed transfer instruction found");
+    }
+    
+    const transferredLamports = transferInstruction.parsed.info.lamports;
+    
+    if (fromAccount !== walletAddress || transferredLamports !== amount * LAMPORTS_PER_SOL) {
+      throw new Error("Transaction mismatch");
+    }
+    return true;
+  } catch (error) {
+    console.error("Tx verification failed:", error);
+    return false;
+  }
+}
+
+// GET — Recent bids
 export async function GET() {
   try {
     const bids = await prisma.bid.findMany({
@@ -16,12 +47,11 @@ export async function GET() {
     });
     const formatted = bids.map((b) => ({
       id: b.id,
-      wallet: b.user.walletAddress
-        ? `${b.user.walletAddress.slice(0, 4)}...${b.user.walletAddress.slice(-4)}`
-        : "Anon",
+      wallet: b.user.walletAddress || "Anon", // Send full address; shorten in frontend
       amount: Number(b.amount),
       createdAt: b.createdAt.toISOString(),
       gameId: b.gameResult.gameId,
+      txSignature: b.txSignature, // For UI linking
     }));
     return NextResponse.json(formatted);
   } catch (error) {
@@ -29,6 +59,7 @@ export async function GET() {
     return NextResponse.json([], { status: 500 });
   }
 }
+
 // POST — Create bid
 export async function POST(req: Request) {
   try {
@@ -36,11 +67,18 @@ export async function POST(req: Request) {
     if (!walletAddress || !amount || !gameId || !txSignature) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
+
+    // Verify tx signature (uncomment to enable)
+    if (!(await verifyTxSignature(txSignature, walletAddress, amount))) {
+      return NextResponse.json({ error: "Invalid transaction" }, { status: 400 });
+    }
+
     const user = await prisma.user.upsert({
       where: { walletAddress },
       update: {},
       create: { walletAddress },
     });
+
     const gameResult = await prisma.gameResult.create({
       data: {
         gameId,
@@ -49,6 +87,7 @@ export async function POST(req: Request) {
         difficulty: difficulty || "medium",
       },
     });
+
     const bid = await prisma.bid.create({
       data: {
         gameResultId: gameResult.gameId,
@@ -58,11 +97,13 @@ export async function POST(req: Request) {
         txSignature,
       },
     });
+
     // Decrease balance
     await prisma.user.update({
       where: { id: user.id },
       data: { balance: { decrement: new Decimal(amount) } },
     });
+
     // Log transaction
     await prisma.transaction.create({
       data: {
@@ -74,10 +115,7 @@ export async function POST(req: Request) {
         txSignature,
       },
     });
-    // REAL-TIME UPDATE
-    if (typeof document !== "undefined") {
-      document.dispatchEvent(new CustomEvent("recent-bid"));
-    }
+
     return NextResponse.json({ success: true, bid });
   } catch (error: any) {
     console.error("POST /api/bids failed:", error);

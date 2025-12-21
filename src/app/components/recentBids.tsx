@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState, useCallback, memo } from "react";
 
 type Bid = {
@@ -8,11 +7,10 @@ type Bid = {
     amount: number;
     createdAt: string;
     gameId: string;
+    txSignature?: string;
 };
 
 function RecentActivity() {
-    console.log("🔄 RecentActivity render");
-
     const [bids, setBids] = useState<Bid[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -31,8 +29,7 @@ function RecentActivity() {
     useEffect(() => {
         fetchBids();
         document.addEventListener("recent-bid", fetchBids);
-        return () =>
-            document.removeEventListener("recent-bid", fetchBids);
+        return () => document.removeEventListener("recent-bid", fetchBids);
     }, [fetchBids]);
 
     const formatRelativeTime = (dateStr: string) => {
@@ -45,39 +42,52 @@ function RecentActivity() {
         return `${Math.floor(hours / 24)} days ago`;
     };
 
+    const shortenAddress = (addr: string) => `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+
     if (loading) {
         return (
             <div className="recent-bids-section">
-                <p className="text-center text-gray-400">
-                    Loading activity...
-                </p>
+                <p className="text-center text-gray-400">Loading activity...</p>
             </div>
         );
     }
 
     return (
         <div className="recent-bids-section">
-            <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
-                Recent Activity
-            </h2>
+            <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">Recent Activity</h2>
             <hr className="hr" />
-
+            {/* COLUMN HEADERS */}
+            <div className="grid grid-cols-3 text-gray-400 text-sm px-2 mb-2">
+                <span>Wallet</span>
+                <span className="text-center">Amount</span>
+                <span className="text-right">Date</span>
+            </div>
             {bids.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">
-                    No bids yet.
-                </p>
+                <p className="text-center text-gray-500 py-8">No bids yet.</p>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                     {bids.map((bid) => (
                         <div
                             key={bid.id}
-                            className="flex justify-between text-gray-300"
+                            className="grid grid-cols-3 items-center px-2 py-1 rounded hover:bg-white/5 transition"
                         >
-                            <span>{bid.wallet}</span>
-                            <span className="text-emerald-400 font-bold">
-                                {bid.amount} SOL
-                            </span>
-                            <span className="text-gray-500 text-xs">
+                            <a
+                                href={
+                                    bid.txSignature
+                                        ? `https://solscan.io/tx/${bid.txSignature}?cluster=devnet`
+                                        : `https://solscan.io/account/${bid.wallet}?cluster=devnet`
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:underline"
+                                title={bid.wallet}
+                            >
+                                {shortenAddress(bid.wallet)}
+                            </a>
+                            {/* AMOUNT */}
+                            <span className="text-center text-emerald-400 font-bold">{bid.amount} SOL</span>
+                            {/* DATE */}
+                            <span className="text-right text-gray-500 text-xs">
                                 {formatRelativeTime(bid.createdAt)}
                             </span>
                         </div>
