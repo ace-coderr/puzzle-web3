@@ -103,7 +103,7 @@ function RecentActivity() {
 
                             {/* AMOUNT */}
                             <span className="text-emerald-400 font-bold">
-                                {bid.amount.toFixed(4)} SOL
+                                {parseFloat(bid.amount.toFixed(4))} SOL
                             </span>
 
                             {/* DATE */}
