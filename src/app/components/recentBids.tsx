@@ -77,27 +77,30 @@ function RecentActivity() {
                     {bids.map((bid) => (
                         <div
                             key={bid.id}
-                            className="grid grid-cols-4 items-center px-2 py-2 rounded hover:bg-white/5 transition"
+                            className="grid grid-cols-4 items-center px-2 py-2 rounded transition"
                         >
                             {/* WALLET */}
-                            <a
-                                href={
-                                    bid.txSignature
-                                        ? `https://solscan.io/tx/${bid.txSignature}?cluster=devnet`
-                                        : `https://solscan.io/account/${bid.wallet}?cluster=devnet`
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={bid.wallet}
-                                className="flex items-center gap-1.5 text-blue-400 hover:underline"
-                            >
-                                <span>{shortenAddress(bid.wallet)}</span>
-                                <img
-                                    src="/images/arrow-link.png"
-                                    alt="Open in Solscan"
-                                    className="w-3 h-3 opacity-80"
-                                />
-                            </a>
+                            <div className="flex items-center gap-1.5 group">
+                                <a
+                                    href={
+                                        bid.txSignature
+                                            ? `https://solscan.io/tx/${bid.txSignature}?cluster=devnet`
+                                            : `https://solscan.io/account/${bid.wallet}?cluster=devnet`
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={bid.wallet}
+                                    className="text-blue-400 hover:underline inline-flex items-center"
+                                >
+                                    {shortenAddress(bid.wallet)}
+                                    <img
+                                        src="/images/arrow-link.png"
+                                        alt=""
+                                        className="w-3 h-3 opacity-80 transition-all duration-200 ease-out group-hover:translate-x-1 group-hover:opacity-100 pointer-events-none invert"
+                                    />
+                                </a>
+                            </div>
+
                             {/* AMOUNT */}
                             <span className="text-emerald-400 font-bold">
                                 {bid.amount.toFixed(4)} SOL
