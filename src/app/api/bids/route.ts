@@ -7,22 +7,22 @@ export const dynamic = "force-dynamic";
 
 const connection = new Connection("https://api.devnet.solana.com", "confirmed");
 
-// Helper to verify tx (optional but recommended to prevent fake bids)
+// Helper to verify tx
 async function verifyTxSignature(txSignature: string, walletAddress: string, amount: number) {
   try {
     const tx = await connection.getParsedTransaction(txSignature, { commitment: "confirmed" });
     if (!tx) throw new Error("Transaction not found");
-    
-    // Basic validation: Check if tx involves the wallet and matches amount
+
+    // Basic validation
     const fromAccount = tx.transaction.message.accountKeys[0].pubkey.toString();
     const transferInstruction = tx.transaction.message.instructions.find(inst => inst.programId.toString() === "11111111111111111111111111111111");
-    
+
     if (!transferInstruction || !('parsed' in transferInstruction)) {
       throw new Error("No parsed transfer instruction found");
     }
-    
+
     const transferredLamports = transferInstruction.parsed.info.lamports;
-    
+
     if (fromAccount !== walletAddress || transferredLamports !== amount * LAMPORTS_PER_SOL) {
       throw new Error("Transaction mismatch");
     }
@@ -47,11 +47,11 @@ export async function GET() {
     });
     const formatted = bids.map((b) => ({
       id: b.id,
-      wallet: b.user.walletAddress || "Anon", // Send full address; shorten in frontend
+      wallet: b.user.walletAddress || "Anon",
       amount: Number(b.amount),
       createdAt: b.createdAt.toISOString(),
       gameId: b.gameResult.gameId,
-      txSignature: b.txSignature, // For UI linking
+      txSignature: b.txSignature,
     }));
     return NextResponse.json(formatted);
   } catch (error) {
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // Verify tx signature (uncomment to enable)
+    // Verify tx signature
     if (!(await verifyTxSignature(txSignature, walletAddress, amount))) {
       return NextResponse.json({ error: "Invalid transaction" }, { status: 400 });
     }

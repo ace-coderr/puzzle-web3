@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState, useCallback, memo } from "react";
 
 type Bid = {
@@ -19,8 +20,8 @@ function RecentActivity() {
             const res = await fetch("/api/bids");
             const data = await res.json();
             setBids(Array.isArray(data) ? data : data.bids || []);
-        } catch {
-            console.error("Failed to load recent bids");
+        } catch (err) {
+            console.error("Failed to load recent bids", err);
         } finally {
             setLoading(false);
         }
@@ -36,13 +37,14 @@ function RecentActivity() {
         const diff = Date.now() - new Date(dateStr).getTime();
         const mins = Math.floor(diff / 60000);
         if (mins < 1) return "Just now";
-        if (mins < 60) return `${mins} mins ago`;
+        if (mins < 60) return `${mins} minutes ago`;
         const hours = Math.floor(mins / 60);
         if (hours < 24) return `${hours} hours ago`;
         return `${Math.floor(hours / 24)} days ago`;
     };
 
-    const shortenAddress = (addr: string) => `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+    const shortenAddress = (addr: string) =>
+        `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 
     if (loading) {
         return (
@@ -54,14 +56,20 @@ function RecentActivity() {
 
     return (
         <div className="recent-bids-section">
-            <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">Recent Activity</h2>
+            <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
+                Recent Activity
+            </h2>
+
             <hr className="hr" />
+
             {/* COLUMN HEADERS */}
-            <div className="grid grid-cols-3 text-gray-400 text-sm px-2 mb-2">
+            <div className="grid grid-cols-4 text-gray-400 text-sm px-2 mb-3">
                 <span>Wallet</span>
-                <span className="text-center">Amount</span>
-                <span className="text-right">Date</span>
+                <span>Amount</span>
+                <span>Date</span>
+                <span>Status</span>
             </div>
+
             {bids.length === 0 ? (
                 <p className="text-center text-gray-500 py-8">No bids yet.</p>
             ) : (
@@ -69,8 +77,9 @@ function RecentActivity() {
                     {bids.map((bid) => (
                         <div
                             key={bid.id}
-                            className="grid grid-cols-3 items-center px-2 py-1 rounded hover:bg-white/5 transition"
+                            className="grid grid-cols-4 items-center px-2 py-2 rounded hover:bg-white/5 transition"
                         >
+                            {/* WALLET */}
                             <a
                                 href={
                                     bid.txSignature
@@ -79,17 +88,37 @@ function RecentActivity() {
                                 }
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-400 hover:underline"
                                 title={bid.wallet}
+                                className="flex items-center gap-1.5 text-blue-400 hover:underline"
                             >
-                                {shortenAddress(bid.wallet)}
+                                <span>{shortenAddress(bid.wallet)}</span>
+                                <img
+                                    src="/images/arrow-link.png"
+                                    alt="Open in Solscan"
+                                    className="w-3 h-3 opacity-80"
+                                />
                             </a>
                             {/* AMOUNT */}
-                            <span className="text-center text-emerald-400 font-bold">{bid.amount} SOL</span>
+                            <span className="text-emerald-400 font-bold">
+                                {bid.amount.toFixed(4)} SOL
+                            </span>
+
                             {/* DATE */}
-                            <span className="text-right text-gray-500 text-xs">
+                            <span className="text-gray-500 text-xs">
                                 {formatRelativeTime(bid.createdAt)}
                             </span>
+
+                            {/* STATUS */}
+                            <div className="flex items-center gap-1.5">
+                                <img
+                                    src="/images/check.png"
+                                    alt="Success"
+                                    className="w-4 h-4"
+                                />
+                                <span className="text-green-500 text-sm font-medium">
+                                    Success
+                                </span>
+                            </div>
                         </div>
                     ))}
                 </div>
