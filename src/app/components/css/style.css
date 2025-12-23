@@ -133,7 +133,70 @@
     margin-left: 10.4%;
 }
 
-.recent-bids-list {
-    max-height: 300px;
-    overflow-y: auto;
+.section-title {
+    font-size: 24px;
+    font-family: bai jamjuree, sans-serif;
+    color: #fff;
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.table-header {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    color: #fff;
+    font-size: 16px;
+    font-family: bai jamjuree, sans-serif;
+    font-weight: 900;
+    padding: 5px;
+    margin-bottom: 10px;
+}
+
+.trns-addy {
+    color: #838cb4;
+    font-weight: 900;
+    font-family: bai jamjuree, sans-serif;
+    font-size: 14px;
+}
+
+.trns-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #60a5fa;
+    text-decoration: none;
+}
+
+.trns-link:hover {
+    text-decoration: underline;
+}
+
+.link-icon {
+    width: 0.75rem;
+    height: 0.75rem;
+    opacity: 0.8;
+    transition: all 200ms ease-out;
+    pointer-events: none;
+    filter: invert(100%);
+}
+
+.group:hover .link-icon {
+    transform: translateX(0.25rem);
+    opacity: 1;
+}
+
+.amount-text {
+    color: #81ff98;
+    font-weight: 800;
+    font-family: bai jamjuree, sans-serif;
+}
+
+.time-text {
+    color: #838cb4;
+    font-family: bai jamjuree, sans-serif;
+}
+
+.check-text {
+    color: #838cb4;
+    font-family: bai jamjuree, sans-serif
 }

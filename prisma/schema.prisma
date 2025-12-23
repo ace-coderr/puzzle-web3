@@ -74,6 +74,7 @@ model Bid {
   amount        Decimal         @db.Decimal(18, 9)
   status        BidStatus       @default(SUCCESS)
   txSignature   String?
+  network       String?         @default("devnet") // <- added
   transactions  Transaction[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt

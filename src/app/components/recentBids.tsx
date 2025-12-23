@@ -9,6 +9,7 @@ type Bid = {
     createdAt: string;
     gameId: string;
     txSignature?: string;
+    network?: "devnet";
 };
 
 function RecentActivity() {
@@ -56,14 +57,11 @@ function RecentActivity() {
 
     return (
         <div className="recent-bids-section">
-            <h2 className="text-xl font-bold text-center mb-4 text-emerald-400">
-                Recent Activity
-            </h2>
-
+            <h2 className="section-title">Recent Activity</h2>
             <hr className="hr" />
 
             {/* COLUMN HEADERS */}
-            <div className="grid grid-cols-4 text-gray-400 text-sm px-2 mb-3">
+            <div className="table-header">
                 <span>Wallet</span>
                 <span>Amount</span>
                 <span>Date</span>
@@ -74,56 +72,56 @@ function RecentActivity() {
                 <p className="text-center text-gray-500 py-8">No bids yet.</p>
             ) : (
                 <div className="space-y-2">
-                    {bids.map((bid) => (
-                        <div
-                            key={bid.id}
-                            className="grid grid-cols-4 items-center px-2 py-2 rounded transition"
-                        >
-                            {/* WALLET */}
-                            <div className="flex items-center gap-1.5 group">
-                                <a
-                                    href={
-                                        bid.txSignature
-                                            ? `https://solscan.io/tx/${bid.txSignature}?cluster=devnet`
-                                            : `https://solscan.io/account/${bid.wallet}?cluster=devnet`
-                                    }
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title={bid.wallet}
-                                    className="text-blue-400 hover:underline inline-flex items-center"
-                                >
-                                    {shortenAddress(bid.wallet)}
-                                    <img
-                                        src="/images/arrow-link.png"
-                                        alt=""
-                                        className="w-3 h-3 opacity-80 transition-all duration-200 ease-out group-hover:translate-x-1 group-hover:opacity-100 pointer-events-none invert"
-                                    />
-                                </a>
-                            </div>
+                    {bids.map((bid) => {
+                        const SOLANA_FM_CLUSTER = "devnet-alpha";
+                        return (
+                            <div
+                                key={bid.id}
+                                className="grid grid-cols-4 items-center px-2 py-2 rounded transition"
+                            >
+                                {/* WALLET */}
+                                <div className="flex items-center gap-1.5 trns-addy">
+                                    <span
+                                        title={bid.wallet}
+                                        className="cursor-default select-all"
+                                    >
+                                        {shortenAddress(bid.wallet)}
+                                    </span>
+                                    {bid.txSignature && (
+                                        <a
+                                            href={`https://orb.helius.xyz/tx/${bid.txSignature}?cluster=devnet`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            title="View on Helius ORB (Devnet)"
+                                            className="trns-link group"
+                                        >
+                                            <img
+                                                src="/images/arrow-link.png"
+                                                alt="Open in explorer"
+                                                className="link-icon"
+                                            />
+                                        </a>
+                                    )}
+                                </div>
 
-                            {/* AMOUNT */}
-                            <span className="text-emerald-400 font-bold">
-                                {parseFloat(bid.amount.toFixed(4))} SOL
-                            </span>
-
-                            {/* DATE */}
-                            <span className="text-gray-500 text-xs">
-                                {formatRelativeTime(bid.createdAt)}
-                            </span>
-
-                            {/* STATUS */}
-                            <div className="flex items-center gap-1.5">
-                                <img
-                                    src="/images/check.png"
-                                    alt="Success"
-                                    className="w-4 h-4"
-                                />
-                                <span className="text-green-500 text-sm font-medium">
-                                    Success
+                                {/* AMOUNT */}
+                                <span className="amount-text">
+                                    {+bid.amount.toFixed(4)} SOL
                                 </span>
+
+                                {/* DATE */}
+                                <span className="time-text">
+                                    {formatRelativeTime(bid.createdAt)}
+                                </span>
+
+                                {/* STATUS */}
+                                <div className="flex items-center gap-1.5">
+                                    <img src="/images/check.png" alt="Success" className="w-4 h-4" />
+                                    <span className="check-text">Success</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

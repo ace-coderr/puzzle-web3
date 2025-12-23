@@ -153,7 +153,8 @@ export default function BidComponent({
           Bids go to treasury • Real SOL • Real wins
         </p>
       </div>
-      {/* RECENT ACTIVITY UNDER BID */}
+
+      {/* RECENT ACTIVITY */}
       <RecentActivity />
     </div>
   );
