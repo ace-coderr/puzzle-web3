@@ -18,12 +18,12 @@
 
 /* Bid section styles */
 .bid-section {
-    width: 80%;
+    width: 40%;
     height: auto;
     border: 1px solid #fff;
     border-radius: 10px;
     margin-bottom: 1%;
-    margin-left: 10.4%;
+    margin-left: 32%;
 }
 
 .play-now {
@@ -122,7 +122,7 @@
     margin-top: 12px;
 }
 
-/* Recent bids section styles */
+/* Recent bids */
 .recent-bids-section {
     width: 80%;
     height: auto;
