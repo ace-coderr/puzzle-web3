@@ -84,7 +84,6 @@ export function Navbar() {
                 </div>
               )}
             </div>
-
           </div>
         )}
         {mounted && !connected && (
