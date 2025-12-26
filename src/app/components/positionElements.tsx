@@ -101,6 +101,7 @@ export function PositionElements() {
     const [time, setTime] = useState<number>(0);
     const [currentBid, setCurrentBid] = useState<number>(0);
     const [showStartModal, setShowStartModal] = useState(false);
+    const [showGameActiveWarning, setShowGameActiveWarning] = useState(false);
     const [bidStarted, setBidStarted] = useState(false);
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [gameActive, setGameActive] = useState(false);
@@ -340,6 +341,11 @@ export function PositionElements() {
                 <div>
                     <button
                         onClick={() => {
+                            if (gameActive) {
+                                setShowGameActiveWarning(true);
+                                return;
+                            }
+
                             setPracticeMode(true);
                             setDifficulty("easy");
                             setMaxMoves(40);
@@ -455,6 +461,14 @@ export function PositionElements() {
                         handleRestart();
                     }
                 }}
+            />
+
+            <Modal
+                show={showGameActiveWarning}
+                title="Game Active"
+                message="Your game is currently active. Finish it before starting practice mode."
+                onClose={() => setShowGameActiveWarning(false)}
+                singleButton={true}
             />
 
             {/* BID CONFIRMED MODAL */}
