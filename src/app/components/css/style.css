@@ -2,6 +2,108 @@
     padding: 80px;
 }
 
+/* Navbar styles */
+.header {
+    background-color: #0a0a2a;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.nav-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+@media (min-width: 768px) {
+    .nav-container {
+        padding-left: 32px;
+        padding-right: 32px;
+    }
+}
+
+.logo img {
+    height: 100px;
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.7));
+}
+
+.home {
+    padding: 10px 20px;
+    border-radius: 12px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: rgb(59, 130, 246);
+    background-color: rgba(37, 99, 235, 40%);
+    color: rgb(191, 219, 254);
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    box-shadow:
+        0px 10px 15px -3px rgba(0, 0, 0, 40%),
+        0px 4px 6px -4px rgba(0, 0, 0, 40%);
+    transition: all 300ms ease;
+}
+
+.home:hover {
+    background-color: rgba(37, 99, 235, 50%);
+    border-color: rgb(59, 130, 246);
+    color: #FFD700;
+}
+
+.reward {
+    padding: 10px 20px;
+    border-radius: 12px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: rgba(16, 185, 129, 30%);
+    background-color: rgba(5, 150, 105, 20%);
+    color: rgb(110, 231, 183);
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    box-shadow:
+        0px 10px 15px -3px rgba(0, 0, 0, 40%),
+        0px 4px 6px -4px rgba(0, 0, 0, 40%);
+    transition: all 300ms ease;
+}
+
+.reward:hover {
+    background-color: rgba(5, 150, 105, 30%);
+    border-color: rgba(16, 185, 129, 50%);
+    color: #FFD700;
+}
+
+.leaderboard {
+    padding: 10px 20px;
+    border-radius: 12px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: rgba(168, 85, 247, 30%);
+    background-color: rgba(147, 51, 234, 20%);
+    color: rgb(196, 181, 253);
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    box-shadow:
+        0px 10px 15px -3px rgba(0, 0, 0, 40%),
+        0px 4px 6px -4px rgba(0, 0, 0, 40%);
+    transition: all 300ms ease;
+}
+
+.leaderboard:hover {
+    background-color: rgba(147, 51, 234, 30%);
+    border-color: rgba(168, 85, 247, 50%);
+    color: #FFD700;
+}
+
+/* Practice mode styles */
 .practice-mode1 {
     color: #FFF;
     margin-left: 45%;
@@ -10,6 +112,7 @@
     font-weight: 900;
     font-family: poppins, sans-serif;
     cursor: pointer;
+    margin-top: 8%;
 }
 
 .practice-mode1:hover {
@@ -122,7 +225,7 @@
     margin-top: 12px;
 }
 
-/* Recent bids */
+/* Recent bids styles */
 .recent-bids-section {
     width: 80%;
     height: auto;

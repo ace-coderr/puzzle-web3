@@ -499,7 +499,7 @@ export function PositionElements() {
             >
                 <div className="text-center py-12">
                     <p className="text-8xl font-black text-emerald-400 drop-shadow-2xl leading-none animate-pulse">
-                        {((currentBid * rewardMultiplier).toString().replace(/\.?0+$/, ''))}
+                        {Number((currentBid * rewardMultiplier).toFixed(6)).toString()}
                     </p>
                     <p className="text-5xl font-bold text-emerald-300 -mt-4 mb-10">
                         SOL REWARD

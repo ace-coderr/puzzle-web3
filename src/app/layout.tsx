@@ -1,28 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { AppWalletProvider } from "./components/appWalletProvider";
 import { Navbar } from "./components/navbar";
-
-// Geist Fonts
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#0f172a",
 };
-
 
 export const metadata: Metadata = {
   title: {
@@ -60,8 +47,8 @@ export default function RootLayout({
       </head>
       <body
         className={`
-          ${geistSans.variable}
-          ${geistMono.variable}
+          ${GeistSans.variable}
+          ${GeistMono.variable}
           font-sans
           antialiased
           bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950
