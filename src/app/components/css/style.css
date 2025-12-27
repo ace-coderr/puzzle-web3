@@ -318,3 +318,124 @@
     color: #838cb4;
     font-family: bai jamjuree, sans-serif
 }
+
+/* reward section styles */
+.reward-page {
+  min-height: 100vh;
+  padding: 48px 16px;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color: white;
+}
+
+.reward-container {
+  max-width: 1100px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.section-title.green { color: #86efac; }
+.section-title.red { color: #f87171; }
+
+/* ROW */
+.reward-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 160px 140px;
+  align-items: center;
+  padding: 18px 24px;
+  border-radius: 14px;
+  backdrop-filter: blur(10px);
+  border: 1px solid;
+  margin-bottom: 12px;
+}
+
+.reward-row.win {
+  background: linear-gradient(90deg, rgba(16,185,129,0.18), rgba(2,6,23,0.6));
+  border-color: rgba(16,185,129,0.35);
+}
+
+.reward-row.lose {
+  background: linear-gradient(90deg, rgba(248,113,113,0.18), rgba(2,6,23,0.6));
+  border-color: rgba(248,113,113,0.35);
+}
+
+.status {
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.meta {
+  color: #d1d5db;
+}
+
+.amount {
+  font-weight: 800;
+  color: #86efac;
+}
+
+.claim-btn {
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  background: #9fe870;
+  color: #052e16;
+  cursor: pointer;
+}
+
+.claim-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.claimed {
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.date {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* MODAL */
+.modal-content {
+  text-align: center;
+  padding: 24px;
+}
+
+.modal-amount {
+  font-size: 48px;
+  font-weight: 900;
+  color: #86efac;
+}
+
+.tx {
+  font-size: 12px;
+  word-break: break-all;
+  color: #9ca3af;
+}
+
+.explorer-link {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: #2563eb;
+  color: white;
+  border-radius: 10px;
+  text-decoration: none;
+}
+
+/* UTILS */
+.centered {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: #9ca3af;
+}
