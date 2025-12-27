@@ -254,7 +254,7 @@ export default function RewardPage() {
             {modal.tx}
           </p>
           <a
-            href={`https://orbexplorer.com/tx/${modal.tx}?cluster=devnet`}
+            href={`https://orb.helius.xyz/tx/${modal.tx}?cluster=devnet`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-lg"

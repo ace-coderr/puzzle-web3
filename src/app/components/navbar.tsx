@@ -69,12 +69,10 @@ export function Navbar() {
             </Link>
 
             {/* WALLET */}
-            <div className="flex items-center gap-3 bg-slate-800/70 backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-700">
+            <div className="wallet-bg">
               <WalletMultiButtonDynamic
-                className="!bg-gradient-to-r !from-yellow-500 !to-orange-500 !text-black !font-bold !text-sm !px-4 !py-2 !rounded-lg
-                   hover:!from-yellow-400 hover:!to-orange-400 transition-all duration-300 transform hover:scale-105 !shadow-md"
+                className="wmbd"
               />
-
               {publicKey && (
                 <div className="font-mono text-sm">
                   <span className="text-gray-400">Balance:</span>{" "}
@@ -88,7 +86,7 @@ export function Navbar() {
         )}
         {mounted && !connected && (
           <WalletMultiButtonDynamic
-            className="!bg-gradient-to-r !from-yellow-500 !to-orange-500 !text-black !font-bold !text-sm !px-4 !py-2 !rounded-lg hover:!from-yellow-400 hover:!to-orange-400 transition-all duration-300 transform hover:scale-105 !shadow-md"
+            className=""
           />
         )}
       </div>
