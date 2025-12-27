@@ -107,9 +107,11 @@ export default function RewardPage() {
               key={r.id}
               result={r}
               action={
-                <span className="claimed">
-                  Claimed: +{r.reward} SOL • {new Date(r.createdAt).toLocaleDateString()}
-                </span>
+                <div className="row-info">
+                  <span className="amount">+{r.reward} SOL</span>
+                  <span className="date">{new Date(r.createdAt).toLocaleDateString()}</span>
+                  <span className="claimed-status">Claimed</span>
+                </div>
               }
             />
           ))}
@@ -123,9 +125,10 @@ export default function RewardPage() {
               key={r.id}
               result={r}
               action={
-                <span className="date">
-                  Lost: -{r.bidding} SOL • {new Date(r.createdAt).toLocaleDateString()}
-                </span>
+                <div className="row-info">
+                  <span className="amount">-{r.bidding} SOL</span>
+                  <span className="date">{new Date(r.createdAt).toLocaleDateString()}</span>
+                </div>
               }
             />
           ))}
@@ -160,6 +163,7 @@ export default function RewardPage() {
 }
 
 /* ---------------- ROW COMPONENT ---------------- */
+
 function RewardRow({
   result,
   action,
@@ -172,9 +176,6 @@ function RewardRow({
       <div className="status">{result.won ? "WIN" : "LOSE"}</div>
       <div className="meta">
         {result.moves} moves • {result.time}s • Bid {result.bidding} SOL
-      </div>
-      <div className="amount">
-        {result.won ? `+${result.reward} SOL` : `-${result.bidding} SOL`}
       </div>
       <div className="action">{action}</div>
     </div>
