@@ -480,90 +480,120 @@
 /* Leaderboard page styles */
 /* PAGE */
 .lb-page {
-    min-height: 100vh;
-    padding-top: 80px;
-    background: radial-gradient(circle at top, #0f172a, #020617);
-    color: #ffffff;
+  min-height: 100vh;
+  padding-top: 80px;
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color: #ffffff;
 }
 
 /* CONTAINER */
 .lb-container {
-    max-width: 920px;
-    margin: auto;
-    padding: 24px;
+  max-width: 920px;
+  margin: auto;
+  padding: 24px;
 }
 
 /* TITLE */
 .lb-title {
-    text-align: center;
-    font-size: 36px;
-    font-weight: 900;
-    margin-bottom: 32px;
+  text-align: center;
+  font-size: 36px;
+  font-weight: 900;
+  margin-bottom: 24px;
 
-    background: linear-gradient(to right, #facc15, #f59e0b);
+  background: linear-gradient(to right, #facc15, #f59e0b);
 
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ACTIONS */
+.lb-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.lb-actions button {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.15);
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  color: #facc15;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lb-actions button:hover {
+  background: rgba(250, 204, 21, 0.25);
 }
 
 /* HEADER */
 .lb-header {
-    display: grid;
-    grid-template-columns: 80px 1fr 120px 120px;
-    padding: 12px 20px;
-    font-size: 14px;
-    color: #9ca3af;
+  display: grid;
+  grid-template-columns: 80px 1fr 120px 120px;
+  padding: 12px 20px;
+  font-size: 14px;
+  color: #9ca3af;
 }
 
 /* ROW */
 .lb-row {
-    display: grid;
-    grid-template-columns: 80px 1fr 120px 120px;
-    align-items: center;
+  display: grid;
+  grid-template-columns: 80px 1fr 120px 120px;
+  align-items: center;
 
-    padding: 18px 20px;
-    margin-bottom: 12px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
 
-    background: linear-gradient(to right,
-            rgba(250, 204, 21, 0.05),
-            rgba(0, 0, 0, 0.25));
+  background: linear-gradient(
+    to right,
+    rgba(250, 204, 21, 0.05),
+    rgba(0, 0, 0, 0.25)
+  );
 
-    border-radius: 16px;
-    border: 1px solid rgba(250, 204, 21, 0.15);
-    backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(250, 204, 21, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 /* TOP 3 */
 .lb-row.top {
-    box-shadow: 0 0 24px rgba(250, 204, 21, 0.25);
+  box-shadow: 0 0 24px rgba(250, 204, 21, 0.25);
+}
+
+/* CURRENT USER */
+.lb-row.me {
+  border: 1px solid #34d399;
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.35);
 }
 
 /* CELLS */
 .rank {
-    font-size: 22px;
-    font-weight: 900;
-    color: #facc15;
+  font-size: 22px;
+  font-weight: 900;
+  color: #facc15;
 }
 
 .address {
-    font-family: monospace;
-    color: #e5e7eb;
+  font-family: monospace;
+  color: #e5e7eb;
 }
 
 .wins {
-    text-align: center;
-    font-weight: 700;
-    color: #34d399;
+  text-align: center;
+  font-weight: 700;
+  color: #34d399;
 }
 
 .sol {
-    text-align: right;
-    font-weight: 800;
-    color: #facc15;
+  text-align: right;
+  font-weight: 800;
+  color: #facc15;
 }
 
 /* LIST */
 .lb-list {
-    margin-top: 12px;
+  margin-top: 12px;
 }
