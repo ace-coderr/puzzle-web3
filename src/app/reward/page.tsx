@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
 import Modal from "../components/modal";
 import confetti from "canvas-confetti";
@@ -20,7 +19,6 @@ type GameResult = {
 
 export default function RewardPage() {
   const { publicKey } = useWallet();
-  const router = useRouter();
 
   const [results, setResults] = useState<GameResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +47,6 @@ export default function RewardPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ gameId, walletAddress: publicKey!.toBase58() }),
     });
-
     const data = await res.json();
 
     confetti({
@@ -63,70 +60,42 @@ export default function RewardPage() {
     fetchHistory();
   };
 
-  if (!publicKey)
-    return <div className="centered">Connect wallet to view rewards</div>;
+  if (!publicKey) return <div className="centered">Connect wallet to view rewards</div>;
+  if (loading) return <div className="centered">Loading rewards...</div>;
 
-  if (loading)
-    return <div className="centered">Loading rewards...</div>;
-
-  const unclaimed = results.filter(r => r.won && r.reward && !r.claimed);
-  const wins = results.filter(r => r.won && r.claimed);
-  const losses = results.filter(r => !r.won);
+  // Top 20 most recent games
+  const recentGames = results
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 20);
 
   return (
     <main className="reward-page">
       <div className="reward-container">
-
-        {/* UNCLAIMED */}
-        {unclaimed.length > 0 && (
-          <section>
-            <h2 className="section-title">Unclaimed Rewards ({unclaimed.length})</h2>
-            {unclaimed.map(r => (
-              <RewardRow
-                key={r.id}
-                result={r}
-                action={
-                  <button
-                    className="claim-btn"
-                    disabled={claiming === r.id}
-                    onClick={() => handleClaim(r.id)}
-                  >
-                    {claiming === r.id ? "Claiming..." : "Claim"}
-                  </button>
-                }
-              />
-            ))}
-          </section>
-        )}
-
-        {/* WINS */}
         <section>
-          <h2 className="section-title green">Wins ({wins.length})</h2>
-          {wins.map(r => (
+          <h2 className="section-title">Recent Games (Top 20)</h2>
+          {recentGames.map((r) => (
             <RewardRow
               key={r.id}
               result={r}
               action={
                 <div className="row-info">
-                  <span className="amount">+{r.reward} SOL</span>
-                  <span className="date">{new Date(r.createdAt).toLocaleDateString()}</span>
-                  <span className="claimed-status">Claimed</span>
-                </div>
-              }
-            />
-          ))}
-        </section>
-
-        {/* LOSSES */}
-        <section>
-          <h2 className="section-title red">Losses ({losses.length})</h2>
-          {losses.map(r => (
-            <RewardRow
-              key={r.id}
-              result={r}
-              action={
-                <div className="row-info">
-                  <span className="amount">-{r.bidding} SOL</span>
+                  {r.won ? (
+                    <>
+                      <span className="amount">+{r.reward ?? 0} SOL</span>
+                      {!r.claimed && r.reward && (
+                        <button
+                          className="claim-btn"
+                          disabled={claiming === r.id}
+                          onClick={() => handleClaim(r.id)}
+                        >
+                          {claiming === r.id ? "Claiming..." : "Claim"}
+                        </button>
+                      )}
+                      {r.claimed && <span className="claimed-status">Claimed</span>}
+                    </>
+                  ) : (
+                    <span className="amount">-{r.bidding} SOL</span>
+                  )}
                   <span className="date">{new Date(r.createdAt).toLocaleDateString()}</span>
                 </div>
               }
@@ -163,7 +132,6 @@ export default function RewardPage() {
 }
 
 /* ---------------- ROW COMPONENT ---------------- */
-
 function RewardRow({
   result,
   action,

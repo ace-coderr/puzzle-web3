@@ -123,7 +123,7 @@
     font-weight: 900;
     font-family: poppins, sans-serif;
     cursor: pointer;
-    margin-top: 8%;
+    padding-top: 200px;
 }
 
 .practice-mode1:hover {
@@ -322,7 +322,7 @@
 /* reward section styles */
 .reward-page {
     min-height: 100vh;
-    padding: 48px 16px;
+    padding: 160px 16px;
     background: radial-gradient(circle at top, #0f172a, #020617);
     color: white;
 }
@@ -392,6 +392,9 @@
     background: #9fe870;
     color: #052e16;
     cursor: pointer;
+}
+.claim-btn:hover {
+    background: #86efac;
 }
 
 .claim-btn:disabled {
