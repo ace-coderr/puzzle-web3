@@ -506,7 +506,7 @@
 /* TITLE */
 .lb-title {
     text-align: center;
-    font-size: 36px;
+    font-size: 30px;
     font-weight: 900;
     margin-bottom: 24px;
     background: linear-gradient(to right, #facc15, #f59e0b);
@@ -524,7 +524,7 @@
 }
 
 .lb-actions button {
-    padding: 10px 18px;
+    padding: 5px 10px;
     border-radius: 999px;
     background: rgba(250, 204, 21, 0.15);
     border: 1px solid rgba(250, 204, 21, 0.35);
@@ -590,6 +590,8 @@
 .address {
     font-family: monospace;
     color: #e5e7eb;
+    font-size: 16px;
+    font-weight: 800;
 }
 
 .wins {

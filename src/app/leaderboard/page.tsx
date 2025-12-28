@@ -93,7 +93,7 @@ export default function LeaderboardPage() {
                                 </div>
                                 <div className="address" style={{ textAlign: "left" }}>{entry.wallet}</div>
                                 <div className="wins" style={{ textAlign: "center" }}>{entry.wins}</div>
-                                <div className="SOL" style={{ textAlign: "right" }}>${Math.floor(entry.totalBid)}</div>
+                                <div className="sol" style={{ textAlign: "right" }}>${Math.floor(entry.totalBid)}</div>
                             </div>
                         );
                     })}
