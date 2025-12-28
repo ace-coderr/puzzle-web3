@@ -1,6 +1,15 @@
 /* PUZZLE BOARD */
 .puzzle-board {
-    padding: 80px;
+    margin-bottom: 88px;
+}
+
+.time-count {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-top: -100px;
+    padding: 100px;
+    margin-top: 4%;
 }
 
 /* NAVBAR */
@@ -124,7 +133,8 @@
     font-weight: 900;
     font-family: poppins, sans-serif;
     cursor: pointer;
-    padding-top: 200px;
+    margin-top: 140px;
+    margin-bottom: 34px;
 }
 
 .practice-mode1:hover {
@@ -323,7 +333,7 @@
 /* REWARD PAGE */
 .reward-page {
     min-height: 100vh;
-    padding: 160px 16px;
+    padding: 140px 16px;
     background: radial-gradient(circle at top, #0f172a, #020617);
     color: white;
 }
@@ -481,7 +491,7 @@
 /* LEADERBOARD PAGE */
 .lb-page {
     min-height: 100vh;
-    padding-top: 80px;
+    padding-top: 120px;
     background: radial-gradient(circle at top, #0f172a, #020617);
     color: #ffffff;
 }
@@ -499,12 +509,10 @@
     font-size: 36px;
     font-weight: 900;
     margin-bottom: 24px;
-
     background: linear-gradient(to right, #facc15, #f59e0b);
-
     -webkit-background-clip: text;
     background-clip: text;
-    color: transparent;
+    color: #fff;
 }
 
 /* ACTIONS */
