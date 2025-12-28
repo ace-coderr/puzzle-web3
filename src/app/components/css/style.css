@@ -577,9 +577,14 @@
 
 /* CELLS */
 .rank {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 900;
-    color: #facc15;
+    color: #fff;
+    text-align: center;
+}
+
+.top-rank {
+    text-shadow: 0 0 6px #facc15;
 }
 
 .address {
@@ -602,4 +607,16 @@
 /* LIST */
 .lb-list {
     margin-top: 12px;
+}
+
+.top-rank-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.crown-icon {
+    width: 26px;
+    height: 26px;
 }
