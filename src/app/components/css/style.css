@@ -496,7 +496,7 @@
     background: linear-gradient(to right, #facc15, #f59e0b);
     -webkit-background-clip: text;
     background-clip: text;
-    color: transparent;
+    color: #fff;
 }
 
 /* HEADER + ROW SHARED GRID */
