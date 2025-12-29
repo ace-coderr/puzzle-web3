@@ -493,12 +493,12 @@
     min-height: 100vh;
     padding-top: 120px;
     background: radial-gradient(circle at top, #0f172a, #020617);
-    color: #ffffff;
+    color: #fff;
 }
 
 /* CONTAINER */
 .lb-container {
-    max-width: 1400px;
+    max-width: 1500px;
     margin: auto;
     padding: 32px 24px;
 }
@@ -508,33 +508,37 @@
     text-align: center;
     font-size: 32px;
     font-weight: 900;
-    margin-bottom: 36px;
+    margin-bottom: 34px;
     background: linear-gradient(to right, #facc15, #f59e0b);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
 }
 
+/* HEADER + ROW SHARED GRID */
+.lb-header,
+.lb-row {
+    display: grid;
+    grid-template-columns: 120px minmax(420px, 1fr) 120px 120px;
+    align-items: center;
+}
+
 /* HEADER */
 .lb-header {
-    display: grid;
-    grid-template-columns: 80px 1fr 120px 120px;
     padding: 16px 24px;
-    margin-bottom: 10px;
     font-size: 14px;
     color: #9ca3af;
 }
 
 /* ROW */
 .lb-row {
-    display: grid;
-    grid-template-columns: 80px 1fr 120px 120px;
-    align-items: center;
     padding: 22px 28px;
     margin-bottom: 16px;
-    background: linear-gradient(to right,
-            rgba(250, 204, 21, 0.05),
-            rgba(0, 0, 0, 0.25));
+    background: linear-gradient(
+        to right,
+        rgba(250, 204, 21, 0.06),
+        rgba(0, 0, 0, 0.3)
+    );
     border-radius: 18px;
     border: 1px solid rgba(250, 204, 21, 0.15);
     backdrop-filter: blur(10px);
@@ -542,99 +546,112 @@
 
 /* TOP 3 */
 .lb-row.top {
-    box-shadow: 0 0 24px rgba(250, 204, 21, 0.25);
+    box-shadow: 0 0 26px rgba(250, 204, 21, 0.25);
 }
 
 /* CURRENT USER */
 .lb-row.me {
     border: 1px solid #34d399;
-    box-shadow: 0 0 18px rgba(52, 211, 153, 0.35);
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.4);
 }
 
-/* CELLS */
+/* COLUMN ALIGNMENT */
+.lb-header div:nth-child(1),
 .rank {
-    font-size: 18px;
-    font-weight: 900;
     text-align: center;
-    color: #facc15;
+}
+
+.lb-header div:nth-child(2),
+.address {
+    text-align: left;
+}
+
+.lb-header div:nth-child(3),
+.wins {
+    text-align: center;
+}
+
+.lb-header div:nth-child(4),
+.sol {
+    text-align: right;
+}
+
+/* RANK */
+.rank {
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.rank-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .top-rank {
-    text-shadow: 0 0 6px #facc15;
+    color: #facc15;
+    text-shadow: 0 0 8px rgba(250, 204, 21, 0.7);
 }
 
-.top-rank-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
+.normal-rank {
+    color: #e5e7eb;
 }
 
+/* ICONS */
 .crown-icon {
+    width: 26px;
+    height: 26px;
+}
+
+.user-icon {
     width: 22px;
     height: 22px;
+    opacity: 0.85;
 }
 
+.lb-row.me .user-icon {
+    filter: drop-shadow(0 0 6px #34d399);
+}
+
+/* CELLS */
 .address {
     font-family: monospace;
+    font-size: 15px;
     font-weight: 800;
     color: #e5e7eb;
-    font-size: 15px;
 }
 
 .wins {
-    text-align: center;
     font-weight: 700;
     color: #34d399;
-    font-size: 16px;
 }
 
 .sol {
-    text-align: right;
     font-weight: 800;
     color: #facc15;
-    font-size: 16px;
 }
 
-/* HELPERS */
-.center {
-    text-align: center;
-}
-
-.right {
-    text-align: right;
-}
-
-.lb-list {
-    margin-top: 12px;
-    padding-bottom: 40px;
-}
-
-/* FLOATING ACTION BUTTONS */
+/* FLOATING BUTTONS */
 .lb-fab {
     position: fixed;
     bottom: 24px;
     right: 24px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    z-index: 1000;
+    gap: 10px;
+    z-index: 50;
 }
 
 .lb-fab button {
-    padding: 8px 10px;
+    padding: 4px 8px;
     border-radius: 999px;
-    background: rgba(250, 204, 21, 0.18);
+    background: rgba(250, 204, 21, 0.2);
     border: 1px solid rgba(250, 204, 21, 0.4);
     color: #facc15;
     font-weight: 800;
     cursor: pointer;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-    transition: all 0.25s ease;
 }
 
 .lb-fab button:hover {
-    background: rgba(250, 204, 21, 0.3);
-    transform: translateY(-2px);
+    background: rgba(250, 204, 21, 0.35);
 }

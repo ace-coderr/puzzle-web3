@@ -16,7 +16,6 @@ export default function LeaderboardPage() {
     const router = useRouter();
 
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-
     const myRowRef = useRef<HTMLDivElement | null>(null);
     const topRef = useRef<HTMLDivElement | null>(null);
 
@@ -58,10 +57,10 @@ export default function LeaderboardPage() {
 
                 {/* HEADER */}
                 <div className="lb-header">
-                    <div className="center">Rank</div>
+                    <div>Rank</div>
                     <div>Address</div>
-                    <div className="center">Wins</div>
-                    <div className="right">Sol</div>
+                    <div>Wins</div>
+                    <div>Sol</div>
                 </div>
 
                 {/* LIST */}
@@ -75,34 +74,30 @@ export default function LeaderboardPage() {
                                 ref={isMe ? myRowRef : null}
                                 className={`lb-row ${idx < 3 ? "top" : ""} ${isMe ? "me" : ""}`}
                             >
-                                <div className={`rank ${idx < 3 ? "top-rank" : ""}`}>
-                                    {idx < 3 ? (
-                                        <span className="top-rank-content">
-                                            <img
-                                                src="/images/crown.png"
-                                                alt="Crown"
-                                                className="crown-icon"
-                                            />
-                                            {entry.rank}
-                                        </span>
-                                    ) : (
-                                        entry.rank
-                                    )}
+                                <div className={`rank ${idx < 3 ? "top-rank" : "normal-rank"}`}>
+                                    <span className="rank-content">
+                                        <img
+                                            src={idx < 3 ? "/images/crown.png" : "/images/user.png"}
+                                            alt={idx < 3 ? "Crown" : "User"}
+                                            className={idx < 3 ? "crown-icon" : "user-icon"}
+                                        />
+                                        {entry.rank}
+                                    </span>
                                 </div>
 
                                 <div className="address">{entry.wallet}</div>
                                 <div className="wins">{entry.wins}</div>
-                                <div className="sol">${entry.totalBid.toFixed(2)}</div>
+                                <div className="sol">${Number(entry.totalBid.toFixed(2)).toString()}</div>
                             </div>
                         );
                     })}
                 </div>
             </div>
 
-            {/* 🔥 FLOATING BUTTONS */}
+            {/* FLOATING ACTION BUTTONS */}
             <div className="lb-fab">
-                <button onClick={scrollToMyRank}>My Rank</button>
-                <button onClick={scrollToTop}>Top ↑</button>
+                <button onClick={scrollToMyRank}>my rank</button>
+                <button onClick={scrollToTop}>top</button>
             </div>
         </main>
     );
