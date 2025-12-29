@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
-import "./css/style.css";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { getUserSOLBalance } from "./getUserBalance";
+import { Home, Gift, Trophy } from "lucide-react";
 
 const WalletMultiButtonDynamic = dynamic(
   async () => (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
@@ -26,72 +26,56 @@ export function Navbar() {
       setBalance(null);
       return;
     }
-
     const fetchBalance = async () => {
-      try {
-        const sol = await getUserSOLBalance(publicKey.toBase58());
-        setBalance(sol);
-      } catch (err) {
-        console.error("Balance fetch failed:", err);
-      }
+      const sol = await getUserSOLBalance(publicKey.toBase58());
+      setBalance(sol);
     };
-
     fetchBalance();
     const interval = setInterval(fetchBalance, 10_000);
     return () => clearInterval(interval);
   }, [publicKey]);
 
-  return (
-    <nav className="header">
-      <div className="nav-container">
+  const links = [
+    { href: "/", label: "Home", icon: <Home size={18} /> },
+    { href: "/reward", label: "Rewards", icon: <Gift size={18} /> },
+    { href: "/leaderboard", label: "Leaderboard", icon: <Trophy size={18} /> },
+  ];
 
-        {/* LEFT: Puzzle Game */}
-        <Link
-          href="/"
-          className="logo"
-        >
-          <img src="/images/logo.png" alt="" />
+  return (
+    <nav className="navbar">
+      <div className="nav-container">
+        {/* LEFT: Logo */}
+        <Link href="/" className="logo">
+          <img src="/images/logo.png" alt="Logo" />
         </Link>
 
-        {mounted && connected && (
-          <div className="flex items-center gap-3">
-
-            <div className="flex items-center gap-3">
-              <Link href="/" className="home nav-link">
-                <img src="/images/home.png" alt="Home" className="icon" />
-                Home
-              </Link>
-
-              <Link href="/reward" className="reward nav-link">
-                <img src="/images/reward.png" alt="Rewards" className="icon" />
-                Rewards
-              </Link>
-
-              <Link href="/leaderboard" className="leaderboard nav-link">
-                <img src="/images/crown.png" alt="Leaderboard" className="icon" />
-                Leaderboard
-              </Link>
-
-              {/* WALLET */}
-              <div className="wallet-bg">
-                <WalletMultiButtonDynamic className="wmbd" />
-                {publicKey && (
-                  <div className="font-mono text-sm">
-                    <span className="text-gray-400">Balance:</span>{" "}
-                    <span className="text-yellow-400 font-bold">
-                      {balance !== null ? `${Number(balance.toFixed(4)).toString()} SOL` : "Loading"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+        {/* RIGHT: Links + Wallet */}
+        <div className="nav-right">
+          <div className="nav-links">
+            {links.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`nav-link ${isActive ? "active" : ""}`}
+                >
+                  {link.icon}
+                  <span>{link.label}</span>
+                </Link>
+              );
+            })}
           </div>
-        )}
-        {mounted && !connected && (
-          <WalletMultiButtonDynamic
-            className=""
-          />
-        )}
+
+          <div className="wallet-section">
+            {mounted && <WalletMultiButtonDynamic className="wallet-btn" />}
+            {mounted && connected && publicKey && (
+              <span className="balance">
+                {balance !== null ? `${balance.toFixed(4)} SOL` : "Loading..."}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </nav>
   );

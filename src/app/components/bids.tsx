@@ -9,13 +9,16 @@ import {
 } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import RecentActivity from "./recentBids";
+
 type BidComponentProps = {
   wallet: WalletContextState;
   onBalanceUpdate?: (balance: number) => void;
 };
+
 const TREASURY_WALLET =
   process.env.NEXT_PUBLIC_TREASURY_WALLET ||
   "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
+
 export default function BidComponent({
   wallet,
   onBalanceUpdate,
@@ -24,16 +27,20 @@ export default function BidComponent({
   const [loading, setLoading] = useState(false);
   const [difficulty, setDifficulty] =
     useState<"easy" | "medium" | "hard">("medium");
+
   const rpcUrl =
     process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
   const connection = new Connection(rpcUrl, "confirmed");
+
   const quickOptions = [0.1, 0.5, 1, 2];
+
   const notifyDifficultyChange = (d: "easy" | "medium" | "hard") => {
     setDifficulty(d);
     document.dispatchEvent(
       new CustomEvent("difficulty-change", { detail: d })
     );
   };
+
   const handleBid = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) {
       alert("Please connect your wallet!");
@@ -63,9 +70,11 @@ export default function BidComponent({
         signedTx.serialize()
       );
       await connection.confirmTransaction(txSignature, "confirmed");
+
       const gameId = `game-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2)}`;
+
       await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -77,21 +86,19 @@ export default function BidComponent({
           difficulty,
         }),
       });
+
       if (onBalanceUpdate) {
         const balance = await connection.getBalance(fromPubkey);
         onBalanceUpdate(balance / LAMPORTS_PER_SOL);
       }
+
       document.dispatchEvent(new CustomEvent("recent-bid"));
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
-          detail: {
-            walletAddress: fromPubkey.toBase58(),
-            amount,
-            gameId,
-            difficulty,
-          },
+          detail: { walletAddress: fromPubkey.toBase58(), amount, gameId, difficulty },
         })
       );
+
       alert(`Success! ${amount} SOL bid placed.`);
     } catch (err) {
       console.error(err);
@@ -100,31 +107,31 @@ export default function BidComponent({
       setLoading(false);
     }
   };
+
   return (
-    <div className="flex flex-col gap-10 max-w-5xlxl w-full">
+    <div className="flex flex-col gap-10 w-full max-w-none mx-auto">
       {/* BID SECTION */}
-      <div className="bid-section">
+      <div className="bid-section max-w-md mx-auto">
         <h2 className="play-now">Play Now</h2>
         <hr className="hr" />
-        <div className="modes-selector text-white">
+        <div className="modes-selector">
           {(["easy", "medium", "hard"] as const).map((d) => (
             <button
               key={d}
               onClick={() => notifyDifficultyChange(d)}
-              className={`mode ${difficulty === d ? "bg-blue-900" : ""}`}
+              className={`mode ${difficulty === d ? "active" : ""}`}
             >
               {d.toUpperCase()}
             </button>
           ))}
         </div>
-        <div className="quick-options1">
+        <div className="quick-options">
           {quickOptions.map((opt) => (
             <button
               key={opt}
               onClick={() => setAmount(opt)}
               disabled={loading}
-              className={`quick-options2 ${amount === opt ? "bg-emerald-600" : "bg-gray-900"
-                }`}
+              className={`quick-option ${amount === opt ? "selected" : ""}`}
             >
               {opt} SOL
             </button>
@@ -136,9 +143,7 @@ export default function BidComponent({
           min="0.001"
           placeholder="Or enter custom amount"
           value={amount ?? ""}
-          onChange={(e) =>
-            setAmount(parseFloat(e.target.value) || null)
-          }
+          onChange={(e) => setAmount(parseFloat(e.target.value) || null)}
           disabled={loading}
           className="custom-amount-input"
         />
@@ -153,9 +158,10 @@ export default function BidComponent({
           Bids go to treasury • Real SOL • Real wins
         </p>
       </div>
-
-      {/* RECENT ACTIVITY */}
-      <RecentActivity />
+      {/* RECENT ACTIVITY WRAPPER */}
+      <div className="recent-activity-wrapper max-w-8xl mx-auto">
+        <RecentActivity />
+      </div>
     </div>
   );
 }
