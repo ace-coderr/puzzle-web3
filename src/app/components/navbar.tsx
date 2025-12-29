@@ -56,31 +56,34 @@ export function Navbar() {
         {mounted && connected && (
           <div className="flex items-center gap-3">
 
-            <Link href="/" className="home">
-              Home
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link href="/" className="home nav-link">
+                <img src="/images/home.png" alt="Home" className="icon" />
+                Home
+              </Link>
 
-            <Link href="/reward" className="reward">
-              Rewards
-            </Link>
+              <Link href="/reward" className="reward nav-link">
+                <img src="/images/reward.png" alt="Rewards" className="icon" />
+                Rewards
+              </Link>
 
-            <Link href="/leaderboard" className="leaderboard">
-              Leaderboard
-            </Link>
+              <Link href="/leaderboard" className="leaderboard nav-link">
+                <img src="/images/crown.png" alt="Leaderboard" className="icon" />
+                Leaderboard
+              </Link>
 
-            {/* WALLET */}
-            <div className="wallet-bg">
-              <WalletMultiButtonDynamic
-                className="wmbd"
-              />
-              {publicKey && (
-                <div className="font-mono text-sm">
-                  <span className="text-gray-400">Balance:</span>{" "}
-                  <span className="text-yellow-400 font-bold">
-                    {balance !== null ? `${Number(balance.toFixed(4)).toString()} SOL` : "Loading"}
-                  </span>
-                </div>
-              )}
+              {/* WALLET */}
+              <div className="wallet-bg">
+                <WalletMultiButtonDynamic className="wmbd" />
+                {publicKey && (
+                  <div className="font-mono text-sm">
+                    <span className="text-gray-400">Balance:</span>{" "}
+                    <span className="text-yellow-400 font-bold">
+                      {balance !== null ? `${Number(balance.toFixed(4)).toString()} SOL` : "Loading"}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
