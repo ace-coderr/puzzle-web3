@@ -83,6 +83,13 @@ const IMAGE_SOURCES = [
     (seed: number) => `https://picsum.photos/seed/${seed}-contrast2/800/480?contrast=1.5&blur=1`,
 ] as const;
 
+/* ---------------------- GRID CONFIG PER DIFFICULTY ---------------------- */
+const GRID_CONFIG = {
+    easy: { cols: 6, rows: 4 },
+    medium: { cols: 8, rows: 4 },
+    hard: { cols: 10, rows: 4 },
+} as const;
+
 /* -------------------------------------------------------------
    MAIN COMPONENT
    ------------------------------------------------------------- */
@@ -158,15 +165,23 @@ export function PositionElements() {
 
     /* ---------- Tile generation ---------- */
     function generateTiles(imageUrl: string): Tile[] {
-        const leftPositions = [0, 8, 16, 24, 32];
-        const topPositions = [0, 6, 12, 18];
+        const { cols, rows } = GRID_CONFIG[difficulty];
+
+        const tileW = 40 / cols;
+        const tileH = 24 / rows;
+
+        const leftPositions = Array.from({ length: cols }, (_, i) => i * tileW);
+        const topPositions = Array.from({ length: rows }, (_, i) => i * tileH);
+
         const bgPositions: [number, number][] = [];
         for (let y of topPositions) {
             for (let x of leftPositions) {
                 bgPositions.push([x, y]);
             }
         }
+
         const shuffled = shuffleArray(bgPositions);
+
         return bgPositions.map(([bgX, bgY], i) => {
             const [x, y] = shuffled[i];
             return { id: i, x, y, bgX, bgY };
@@ -415,53 +430,63 @@ export function PositionElements() {
             {/* ----- Puzzle board ----- */}
             <div className="flex justify-center items-center gap-10 mt-12 w-full puzzle-board">
                 <div className="relative w-[40vw] h-[24vw] border border-white/10 rounded-xl shadow-xl bg-black/20 overflow-hidden">
-                    {(!gameActive && !practiceMode) && (
-                        generateTiles("/images/preview.jpg").map((tile) => (
+                    {(() => {
+                        const { cols, rows } = GRID_CONFIG[difficulty];
+                        const tileW = 40 / cols;
+                        const tileH = 24 / rows;
+
+                        /* ---------- PREVIEW MODE ---------- */
+                        if (!gameActive && !practiceMode) {
+                            return generateTiles("/images/preview.jpg").map((tile) => (
+                                <div
+                                    key={tile.id}
+                                    className="absolute box-border opacity-80"
+                                    style={{
+                                        width: `${tileW}vw`,
+                                        height: `${tileH}vw`,
+                                        left: `${tile.x}vw`,
+                                        top: `${tile.y}vw`,
+                                        backgroundImage: 'url("/images/preview.jpg")',
+                                        backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
+                                        backgroundSize: `40vw 24vw`,
+                                        backgroundRepeat: "no-repeat",
+                                        filter: "brightness(0.85)",
+                                    }}
+                                />
+                            ));
+                        }
+
+                        /* ---------- ACTIVE GAME / PRACTICE ---------- */
+                        return tiles.map((tile) => (
                             <div
                                 key={tile.id}
-                                className="absolute w-[8vw] h-[6vw] box-border cursor-grab opacity-80"
-                                draggable
-                                onDragStart={() => { }}
+                                className="absolute box-border"
+                                draggable={practiceMode || currentBid > 0}
+                                onDragStart={() =>
+                                    (practiceMode || currentBid > 0) && handleDragStart(tile)
+                                }
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, tile)}
                                 style={{
+                                    width: `${tileW}vw`,
+                                    height: `${tileH}vw`,
                                     left: `${tile.x}vw`,
                                     top: `${tile.y}vw`,
-                                    backgroundImage: 'url("/images/preview.jpg")',
+                                    backgroundImage: `url(${imageUrl})`,
                                     backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
                                     backgroundSize: `40vw 24vw`,
                                     backgroundRepeat: "no-repeat",
-                                    filter: "brightness(0.85)",
+                                    opacity: draggedTile?.id === tile.id ? 0.5 : 1,
+                                    cursor: "grab",
+                                    transition: "box-shadow 0.15s ease",
+                                    boxShadow:
+                                        draggedTile?.id === tile.id
+                                            ? "0 0 50px rgba(16,185,129,0.8)"
+                                            : "0 4px 12px rgba(0,0,0,0.35)",
                                 }}
                             />
-                        ))
-                    )}
-
-                    {/* ---------- REAL GAME TILES ---------- */}
-                    {(gameActive || practiceMode) && tiles.map((tile) => (
-                        <div
-                            key={tile.id}
-                            className="absolute w-[8vw] h-[6vw] box-border"
-                            draggable={practiceMode || currentBid > 0}
-                            onDragStart={() =>
-                                (practiceMode || currentBid > 0) && handleDragStart(tile)
-                            }
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, tile)}
-                            style={{
-                                left: `${tile.x}vw`,
-                                top: `${tile.y}vw`,
-                                backgroundImage: `url(${imageUrl})`,
-                                backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
-                                backgroundSize: `40vw 24vw`,
-                                backgroundRepeat: "no-repeat",
-                                opacity: draggedTile?.id === tile.id ? 0.5 : 1,
-                                transition: "box-shadow 0.15s ease",
-                                boxShadow:
-                                    draggedTile?.id === tile.id
-                                        ? "0 0 50px rgba(16,185,129,0.8)"
-                                        : "0 4px 12px rgba(0,0,0,0.35)",
-                            }}
-                        />
-                    ))}
+                        ));
+                    })()}
                 </div>
 
                 {/* ---------- CENTER ARROW ---------- */}
@@ -469,7 +494,7 @@ export function PositionElements() {
                     ➜
                 </div>
 
-                {/* ---------- RIGHT: REFERENCE IMAGE ---------- */}
+                {/* ---------- REFERENCE IMAGE ---------- */}
                 <div className="w-[40vw] h-[24vw] border border-white/10 rounded-xl shadow-xl overflow-hidden">
                     <img
                         src={imageUrl}
