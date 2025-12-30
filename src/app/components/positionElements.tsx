@@ -429,78 +429,103 @@ export function PositionElements() {
 
             {/* ----- Puzzle board ----- */}
             <div className="flex justify-center items-center gap-10 mt-12 w-full puzzle-board">
-                <div className="relative w-[40vw] h-[24vw] border border-white/10 rounded-xl shadow-xl bg-black/20 overflow-hidden">
-                    {(() => {
-                        const { cols, rows } = GRID_CONFIG[difficulty];
-                        const tileW = 40 / cols;
-                        const tileH = 24 / rows;
 
-                        /* ---------- PREVIEW MODE ---------- */
-                        if (!gameActive && !practiceMode) {
-                            return generateTiles("/images/preview.jpg").map((tile) => (
+                <div className="relative p-3 rounded-2xl 
+        bg-gradient-to-br from-white/10 via-white/5 to-transparent
+        shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+
+                    <div className="absolute -top-4 left-6 
+            bg-black/80 px-4 py-1 rounded-full 
+            border border-white/20 
+            text-xs tracking-widest text-white/80">
+                        PUZZLE BOARD
+                    </div>
+
+                    <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
+
+                    <div className="relative w-[40vw] h-[24vw] 
+            rounded-xl overflow-hidden 
+            bg-black/40 border border-white/10">
+
+                        {(() => {
+                            const { cols, rows } = GRID_CONFIG[difficulty];
+                            const tileW = 40 / cols;
+                            const tileH = 24 / rows;
+
+                            /* ---------- PREVIEW MODE ---------- */
+                            if (!gameActive && !practiceMode) {
+                                return generateTiles("/images/preview.jpg").map((tile) => (
+                                    <div
+                                        key={tile.id}
+                                        className="absolute box-border opacity-80"
+                                        style={{
+                                            width: `${tileW}vw`,
+                                            height: `${tileH}vw`,
+                                            left: `${tile.x}vw`,
+                                            top: `${tile.y}vw`,
+                                            backgroundImage: 'url("/images/preview.jpg")',
+                                            backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
+                                            backgroundSize: `40vw 24vw`,
+                                            backgroundRepeat: "no-repeat",
+                                            filter: "brightness(0.85)",
+                                        }}
+                                    />
+                                ));
+                            }
+
+                            /* ---------- ACTIVE GAME / PRACTICE ---------- */
+                            return tiles.map((tile) => (
                                 <div
                                     key={tile.id}
-                                    className="absolute box-border opacity-80"
+                                    className="absolute box-border"
+                                    draggable={practiceMode || currentBid > 0}
+                                    onDragStart={() =>
+                                        (practiceMode || currentBid > 0) && handleDragStart(tile)
+                                    }
+                                    onDragOver={handleDragOver}
+                                    onDrop={(e) => handleDrop(e, tile)}
                                     style={{
                                         width: `${tileW}vw`,
                                         height: `${tileH}vw`,
                                         left: `${tile.x}vw`,
                                         top: `${tile.y}vw`,
-                                        backgroundImage: 'url("/images/preview.jpg")',
+                                        backgroundImage: `url(${imageUrl})`,
                                         backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
                                         backgroundSize: `40vw 24vw`,
                                         backgroundRepeat: "no-repeat",
-                                        filter: "brightness(0.85)",
+                                        opacity: draggedTile?.id === tile.id ? 0.5 : 1,
+                                        cursor: "grab",
+                                        transition: "box-shadow 0.15s ease",
+                                        boxShadow:
+                                            draggedTile?.id === tile.id
+                                                ? "0 0 50px rgba(16,185,129,0.8)"
+                                                : "0 4px 12px rgba(0,0,0,0.35)",
                                     }}
                                 />
                             ));
-                        }
-
-                        /* ---------- ACTIVE GAME / PRACTICE ---------- */
-                        return tiles.map((tile) => (
-                            <div
-                                key={tile.id}
-                                className="absolute box-border"
-                                draggable={practiceMode || currentBid > 0}
-                                onDragStart={() =>
-                                    (practiceMode || currentBid > 0) && handleDragStart(tile)
-                                }
-                                onDragOver={handleDragOver}
-                                onDrop={(e) => handleDrop(e, tile)}
-                                style={{
-                                    width: `${tileW}vw`,
-                                    height: `${tileH}vw`,
-                                    left: `${tile.x}vw`,
-                                    top: `${tile.y}vw`,
-                                    backgroundImage: `url(${imageUrl})`,
-                                    backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
-                                    backgroundSize: `40vw 24vw`,
-                                    backgroundRepeat: "no-repeat",
-                                    opacity: draggedTile?.id === tile.id ? 0.5 : 1,
-                                    cursor: "grab",
-                                    transition: "box-shadow 0.15s ease",
-                                    boxShadow:
-                                        draggedTile?.id === tile.id
-                                            ? "0 0 50px rgba(16,185,129,0.8)"
-                                            : "0 4px 12px rgba(0,0,0,0.35)",
-                                }}
-                            />
-                        ));
-                    })()}
+                        })()}
+                    </div>
                 </div>
 
-                {/* ---------- CENTER ARROW ---------- */}
+                {/* ================== CENTER ARROW ================== */}
                 <div className="text-white text-5xl font-bold opacity-80 select-none">
                     ➜
                 </div>
 
-                {/* ---------- REFERENCE IMAGE ---------- */}
-                <div className="w-[40vw] h-[24vw] border border-white/10 rounded-xl shadow-xl overflow-hidden">
-                    <img
-                        src={imageUrl}
-                        alt="Reference"
-                        className="w-full h-full object-cover"
-                    />
+                {/* ================== REFERENCE IMAGE ================== */}
+                <div className="relative p-3 rounded-2xl 
+        bg-gradient-to-br from-white/10 via-white/5 to-transparent
+        shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+
+                    <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
+
+                    <div className="w-[40vw] h-[24vw] rounded-xl overflow-hidden border border-white/10">
+                        <img
+                            src={imageUrl}
+                            alt="Reference"
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
                 </div>
             </div>
 
