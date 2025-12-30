@@ -87,9 +87,15 @@ const IMAGE_SOURCES = [
    MAIN COMPONENT
    ------------------------------------------------------------- */
 export function PositionElements() {
-    const { publicKey, connected } = useWallet();
+    const { publicKey } = useWallet();
     const router = useRouter();
-    const { playWin, playLose } = useGameSounds();
+    const {
+        playWin,
+        playLose,
+        playPerfect,
+        playDanger,
+        playEnding,
+    } = useGameSounds();
 
     // CORE STATES
     const [imageUrl, setImageUrl] = useState<string>("/images/preview.jpg");
@@ -112,7 +118,8 @@ export function PositionElements() {
     // Practice Mode
     const [practiceMode, setPracticeMode] = useState<boolean>(false);
     const [showPracticeModal, setShowPracticeModal] = useState(false);
-    const [practiceType, setPracticeType] = useState<"start" | "win" | "gameover">("start");
+    const [practiceType, setPracticeType] =
+        useState<"start" | "win" | "gameover">("start");
     const [finalPracticeTime, setFinalPracticeTime] = useState<number>(0);
 
     useEffect(() => {
@@ -244,11 +251,17 @@ export function PositionElements() {
 
         const interval = setInterval(() => {
             setTime((t) => {
-                if (t + 1 >= maxTime) {
+                const newTime = t + 1;
+
+                if (newTime >= maxTime - 5) {
+                    playEnding();
+                }
+
+                if (newTime >= maxTime) {
                     clearInterval(interval);
                     return maxTime;
                 }
-                return t + 1;
+                return newTime;
             });
         }, 1000);
 
@@ -257,19 +270,42 @@ export function PositionElements() {
     }, [gameActive, maxTime]);
 
     // DRAG & DROP
-    const handleDragStart = (tile: Tile) => { if (!gameActive) return; setDraggedTile(tile); };
+    const handleDragStart = (tile: Tile) => {
+        if (!gameActive) return;
+        setDraggedTile(tile);
+    };
+
     const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+
     const handleDrop = (e: React.DragEvent, target: Tile) => {
         e.preventDefault();
         if (!gameActive || !draggedTile) return;
+
+        const isCorrectDrop = draggedTile.bgX === target.x && draggedTile.bgY === target.y;
 
         setTiles(tiles.map(t =>
             t.id === draggedTile.id ? { ...t, x: target.x, y: target.y } :
                 t.id === target.id ? { ...t, x: draggedTile.x, y: draggedTile.y } :
                     t
         ));
+
+        setMoveCount(c => {
+            const newMoveCount = c + 1;
+
+            if (newMoveCount >= maxMoves - 3) {
+                playEnding();
+            }
+
+            return newMoveCount;
+        });
+
+        if (isCorrectDrop) {
+            playPerfect();
+        } else {
+            playDanger();
+        }
+
         setDraggedTile(null);
-        setMoveCount(c => c + 1);
     };
 
     /* ---------------------- RESTART ---------------------- */
