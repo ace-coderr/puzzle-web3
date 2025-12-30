@@ -14,43 +14,41 @@
 
 /* NAVBAR */
 .navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  backdrop-filter: blur(12px);
-  background: linear-gradient(
-    180deg,
-    rgba(10, 10, 40, 0.95),
-    rgba(10, 10, 40, 0.85)
-  );
-  z-index: 1000;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    backdrop-filter: blur(12px);
+    background: linear-gradient(180deg,
+            rgba(10, 10, 40, 0.95),
+            rgba(10, 10, 40, 0.85));
+    z-index: 1000;
 }
 
 .nav-container {
-  width: 100%;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
+    width: 100%;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
 }
 
 /* Logo */
 .logo img {
     padding-top: 10px;
-  height: 180px;
+    height: 180px;
 }
 
 .nav-right {
-  display: flex;
-  align-items: center;
-  gap: 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
 }
 
 .nav-links {
-  display: flex;
-  gap: 16px;
+    display: flex;
+    gap: 16px;
 }
 
 .nav-link {
@@ -217,6 +215,50 @@
 .bid-info {
     font-size: 14px;
     color: #888;
+}
+
+.difficulty-wrapper {
+    position: relative;
+}
+
+.difficulty-tooltip {
+    position: absolute;
+    top: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 10px 14px;
+    text-align: center;
+    white-space: nowrap;
+    z-index: 50;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    animation: fadeUp 0.15s ease;
+}
+
+.tooltip-multiplier {
+    font-weight: 900;
+    color: #10b981;
+    font-size: 15px;
+}
+
+.tooltip-details {
+    font-size: 13px;
+    color: #bbb;
+    margin-top: 2px;
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
 }
 
 /* RECENT BIDS */

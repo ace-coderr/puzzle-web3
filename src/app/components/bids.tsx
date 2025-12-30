@@ -15,18 +15,23 @@ type BidComponentProps = {
   onBalanceUpdate?: (balance: number) => void;
 };
 
+const DIFFICULTY_META = {
+  easy: { label: "EASY", multiplier: 1.2, moves: 40, time: 180 },
+  medium: { label: "MEDIUM", multiplier: 1.5, moves: 30, time: 90 },
+  hard: { label: "HARD", multiplier: 2.5, moves: 20, time: 60 },
+} as const;
+
 const TREASURY_WALLET =
   process.env.NEXT_PUBLIC_TREASURY_WALLET ||
   "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
 
-export default function BidComponent({
-  wallet,
-  onBalanceUpdate,
-}: BidComponentProps) {
+export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentProps) {
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [difficulty, setDifficulty] =
-    useState<"easy" | "medium" | "hard">("medium");
+    useState<keyof typeof DIFFICULTY_META>("medium");
+  const [hoveredDifficulty, setHoveredDifficulty] =
+    useState<keyof typeof DIFFICULTY_META | null>(null);
 
   const rpcUrl =
     process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
@@ -34,11 +39,9 @@ export default function BidComponent({
 
   const quickOptions = [0.1, 0.5, 1, 2];
 
-  const notifyDifficultyChange = (d: "easy" | "medium" | "hard") => {
+  const notifyDifficultyChange = (d: keyof typeof DIFFICULTY_META) => {
     setDifficulty(d);
-    document.dispatchEvent(
-      new CustomEvent("difficulty-change", { detail: d })
-    );
+    document.dispatchEvent(new CustomEvent("difficulty-change", { detail: d }));
   };
 
   const handleBid = async () => {
@@ -50,25 +53,26 @@ export default function BidComponent({
       alert("Enter a valid bid amount.");
       return;
     }
+
     setLoading(true);
     try {
       const fromPubkey = wallet.publicKey;
       const toPubkey = new PublicKey(TREASURY_WALLET);
       const lamports = Math.round(amount * LAMPORTS_PER_SOL);
+
       const transaction = new Transaction().add(
-        SystemProgram.transfer({
-          fromPubkey,
-          toPubkey,
-          lamports,
-        })
+        SystemProgram.transfer({ fromPubkey, toPubkey, lamports })
       );
+
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = fromPubkey;
+
       const signedTx = await wallet.signTransaction(transaction);
       const txSignature = await connection.sendRawTransaction(
         signedTx.serialize()
       );
+
       await connection.confirmTransaction(txSignature, "confirmed");
 
       const gameId = `game-${Date.now()}-${Math.random()
@@ -110,21 +114,47 @@ export default function BidComponent({
 
   return (
     <div className="flex flex-col gap-10 w-full max-w-none mx-auto">
-      {/* BID SECTION */}
       <div className="bid-section max-w-md mx-auto">
         <h2 className="play-now">Play Now</h2>
         <hr className="hr" />
+
+        {/* DIFFICULTY SELECTOR */}
         <div className="modes-selector">
-          {(["easy", "medium", "hard"] as const).map((d) => (
-            <button
-              key={d}
-              onClick={() => notifyDifficultyChange(d)}
-              className={`mode ${difficulty === d ? "active" : ""}`}
-            >
-              {d.toUpperCase()}
-            </button>
-          ))}
+          {(Object.keys(DIFFICULTY_META) as Array<keyof typeof DIFFICULTY_META>).map(
+            (d) => {
+              const meta = DIFFICULTY_META[d];
+              return (
+                <div
+                  key={d}
+                  className="difficulty-wrapper"
+                  onMouseEnter={() => setHoveredDifficulty(d)}
+                  onMouseLeave={() => setHoveredDifficulty(null)}
+                >
+                  <button
+                    onClick={() => notifyDifficultyChange(d)}
+                    className={`mode ${difficulty === d ? "active" : ""}`}
+                  >
+                    {meta.label}
+                  </button>
+
+                  {/* Tooltip */}
+                  {hoveredDifficulty === d && (
+                    <div className="difficulty-tooltip">
+                      <div className="tooltip-multiplier">
+                        {meta.multiplier}x Reward
+                      </div>
+                      <div className="tooltip-details">
+                        {meta.moves} moves • {meta.time}s
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+          )}
         </div>
+
+        {/* QUICK OPTIONS */}
         <div className="quick-options">
           {quickOptions.map((opt) => (
             <button
@@ -137,6 +167,7 @@ export default function BidComponent({
             </button>
           ))}
         </div>
+
         <input
           type="number"
           step="0.001"
@@ -147,6 +178,7 @@ export default function BidComponent({
           disabled={loading}
           className="custom-amount-input"
         />
+
         <button
           onClick={handleBid}
           disabled={loading || !amount}
@@ -154,11 +186,12 @@ export default function BidComponent({
         >
           {loading ? "Processing..." : "Place Bid & Play"}
         </button>
+
         <p className="bid-info">
           Bids go to treasury • Real SOL • Real wins
         </p>
       </div>
-      {/* RECENT ACTIVITY WRAPPER */}
+
       <div className="recent-activity-wrapper max-w-8xl mx-auto">
         <RecentActivity />
       </div>
