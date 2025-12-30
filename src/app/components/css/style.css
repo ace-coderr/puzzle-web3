@@ -38,10 +38,10 @@
 
 /* Logo */
 .logo img {
-  height: 64px; /* bigger logo */
+    padding-top: 10px;
+  height: 180px;
 }
 
-/* Right side */
 .nav-right {
   display: flex;
   align-items: center;
