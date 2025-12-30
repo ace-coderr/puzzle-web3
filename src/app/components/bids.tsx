@@ -16,9 +16,9 @@ type BidComponentProps = {
 };
 
 const DIFFICULTY_META = {
-  easy: { label: "EASY", multiplier: 1.2, moves: 40, time: 180 },
+  easy: { label: "EASY", multiplier: 1.1, moves: 40, time: 180 },
   medium: { label: "MEDIUM", multiplier: 1.5, moves: 30, time: 90 },
-  hard: { label: "HARD", multiplier: 2.5, moves: 20, time: 60 },
+  hard: { label: "HARD", multiplier: 3.0, moves: 20, time: 60 },
 } as const;
 
 const TREASURY_WALLET =

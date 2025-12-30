@@ -152,7 +152,7 @@ export function PositionElements() {
         setMaxMoves(d.moves);
         setMaxTime(d.time);
         setRewardMultiplier(
-            d.level === "easy" ? 1.2 : d.level === "medium" ? 1.5 : 2.5
+            d.level === "easy" ? 1.1 : d.level === "medium" ? 1.5 : 3.0
         );
     }, [difficulty, practiceMode]);
 
