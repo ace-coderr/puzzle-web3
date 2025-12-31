@@ -9,13 +9,15 @@ import { getUserSOLBalance } from "./getUserBalance";
 import { Home, Gift, Trophy } from "lucide-react";
 
 const WalletMultiButtonDynamic = dynamic(
-  async () => (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
+  async () =>
+    (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
   { ssr: false }
 );
 
 export function Navbar() {
   const { publicKey, connected } = useWallet();
   const pathname = usePathname();
+
   const [balance, setBalance] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -26,10 +28,12 @@ export function Navbar() {
       setBalance(null);
       return;
     }
+
     const fetchBalance = async () => {
       const sol = await getUserSOLBalance(publicKey.toBase58());
       setBalance(sol);
     };
+
     fetchBalance();
     const interval = setInterval(fetchBalance, 10_000);
     return () => clearInterval(interval);
@@ -44,35 +48,45 @@ export function Navbar() {
   return (
     <nav className="navbar">
       <div className="nav-container">
-        {/* LEFT: Logo */}
+        {/* ================= LEFT: LOGO (ALWAYS VISIBLE) ================= */}
         <Link href="/" className="logo">
           <img src="/images/logo.png" alt="Logo" />
         </Link>
 
-        {/* RIGHT: Links + Wallet */}
+        {/* ================= RIGHT SIDE ================= */}
         <div className="nav-right">
-          <div className="nav-links">
-            {links.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`nav-link ${isActive ? "active" : ""}`}
-                >
-                  {link.icon}
-                  <span>{link.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+          {/* ---------- NAV LINKS (ONLY AFTER CONNECT) ---------- */}
+          {mounted && connected && (
+            <div className="nav-links">
+              {links.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`nav-link ${isActive ? "active" : ""}`}
+                  >
+                    {link.icon}
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
 
+          {/* ---------- WALLET / BALANCE ---------- */}
           <div className="wallet-section">
-            {mounted && <WalletMultiButtonDynamic className="wallet-btn" />}
+            {mounted && !connected && (
+              <WalletMultiButtonDynamic className="wallet-btn" />
+            )}
+
             {mounted && connected && publicKey && (
-              <span className="balance">
-                {balance !== null ? `${balance.toFixed(4)} SOL` : "Loading..."}
-              </span>
+              <>
+                <WalletMultiButtonDynamic className="wallet-btn" />
+                <span className="balance">
+                  {balance !== null ? `${balance.toFixed(4)} SOL` : "Loading..."}
+                </span>
+              </>
             )}
           </div>
         </div>

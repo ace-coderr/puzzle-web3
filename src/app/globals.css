@@ -159,15 +159,24 @@
   animation: scale-in 0.25s ease-out;
 }
 
-.random-btn {
-  transition: opacity 0.5s ease-in-out;
+/* ================== ✅ WRONG MOVE FLOAT ================== */
+@keyframes floatFade {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-25px) scale(1.05);
+  }
 }
 
-.time-count{
-  margin-top: 2%;
-  margin-bottom: -4%;
-}
-
-.ran-upl{
-  margin-bottom: 1%;
+.animate-float-fade {
+  animation: floatFade 0.7s ease-out forwards;
 }

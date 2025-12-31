@@ -119,6 +119,7 @@ export function PositionElements() {
     const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const [gameActive, setGameActive] = useState(false);
     const [finalTime, setFinalTime] = useState<number>(0);
+    const [showWrongMove, setShowWrongMove] = useState(false);
 
     const [availableSeeds, setAvailableSeeds] = useState<number[]>([]);
 
@@ -318,6 +319,9 @@ export function PositionElements() {
             playPerfect();
         } else {
             playDanger();
+
+            setShowWrongMove(true);
+            setTimeout(() => setShowWrongMove(false), 900);
         }
 
         setDraggedTile(null);
@@ -429,24 +433,9 @@ export function PositionElements() {
 
             {/* ----- Puzzle board ----- */}
             <div className="flex justify-center items-center gap-10 mt-12 w-full puzzle-board">
-
-                <div className="relative p-3 rounded-2xl 
-        bg-gradient-to-br from-white/10 via-white/5 to-transparent
-        shadow-[0_0_60px_rgba(0,0,0,0.6)]">
-
-                    <div className="absolute -top-4 left-6 
-            bg-black/80 px-4 py-1 rounded-full 
-            border border-white/20 
-            text-xs tracking-widest text-white/80">
-                        PUZZLE BOARD
-                    </div>
-
+                <div className="relative p-3 rounded-2xl bg-gradient-to-br from-white/10 via-white/5 to-transparent shadow-[0_0_60px_rgba(0,0,0,0.6)]">
                     <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
-
-                    <div className="relative w-[40vw] h-[24vw] 
-            rounded-xl overflow-hidden 
-            bg-black/40 border border-white/10">
-
+                    <div className="relative w-[40vw] h-[24vw] rounded-xl overflow-hidden bg-black/40 border border-white/10">
                         {(() => {
                             const { cols, rows } = GRID_CONFIG[difficulty];
                             const tileW = 40 / cols;
@@ -505,6 +494,15 @@ export function PositionElements() {
                             ));
                         })()}
                     </div>
+
+                    {/* WRONG MOVE INDICATOR */}
+                    {showWrongMove && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
+                            <span className="text-red-400 text-6xl font-black animate-float-fade drop-shadow-[0_0_20px_rgba(248,113,113,0.8)]">
+                                -1
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* ================== CENTER ARROW ================== */}
@@ -513,12 +511,8 @@ export function PositionElements() {
                 </div>
 
                 {/* ================== REFERENCE IMAGE ================== */}
-                <div className="relative p-3 rounded-2xl 
-        bg-gradient-to-br from-white/10 via-white/5 to-transparent
-        shadow-[0_0_60px_rgba(0,0,0,0.6)]">
-
+                <div className="relative p-3 rounded-2xl bg-gradient-to-br from-white/10 via-white/5 to-transparent shadow-[0_0_60px_rgba(0,0,0,0.6)]">
                     <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
-
                     <div className="w-[40vw] h-[24vw] rounded-xl overflow-hidden border border-white/10">
                         <img
                             src={imageUrl}
