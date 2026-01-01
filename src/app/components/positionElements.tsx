@@ -120,7 +120,6 @@ export function PositionElements() {
     const [currentBid, setCurrentBid] = useState<number>(0);
     const [showStartModal, setShowStartModal] = useState(false);
     const [showGameActiveWarning, setShowGameActiveWarning] = useState(false);
-    const [bidStarted, setBidStarted] = useState(false);
     const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [gameActive, setGameActive] = useState(false);
     const [finalTime, setFinalTime] = useState<number>(0);
@@ -363,7 +362,6 @@ export function PositionElements() {
         stopEnding();
 
         setCurrentBid(0);
-        setBidStarted(false);
         setShowStartModal(false);
         setPracticeMode(false);
 
@@ -384,7 +382,6 @@ export function PositionElements() {
         if (gameId) localStorage.setItem("currentGameId", gameId);
         setPracticeMode(!!practice);
         setCurrentBid(amount || 0);
-        setBidStarted(true);
         setGameActive(false);
 
         if (incomingDifficulty && (incomingDifficulty === 'easy' || incomingDifficulty === 'medium' || incomingDifficulty === 'hard')) {
