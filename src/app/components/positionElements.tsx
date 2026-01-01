@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import Modal from "./modal";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useSound } from "./context/soundPorvider";
+import { useSound } from "./context/soundProvider";
 import PracticeModal from "./practiceModal";
 
 export type Tile = {
@@ -97,17 +97,17 @@ export function PositionElements() {
     const { publicKey } = useWallet();
     const router = useRouter();
     const {
-  playBg,
-  stopBg,
-  playWin,
-  playLose,
-  playPerfect,
-  playDanger,
-  playEnding,
-  stopEnding,
-  stopAll,
-  unlockAudio,
-} = useSound();
+        playBg,
+        stopBg,
+        playWin,
+        playLose,
+        playPerfect,
+        playDanger,
+        playEnding,
+        stopEnding,
+        stopAll,
+        unlockAudio,
+    } = useSound();
 
     // CORE STATES
     const [imageUrl, setImageUrl] = useState<string>("/images/preview.jpg");
@@ -121,7 +121,7 @@ export function PositionElements() {
     const [showStartModal, setShowStartModal] = useState(false);
     const [showGameActiveWarning, setShowGameActiveWarning] = useState(false);
     const [bidStarted, setBidStarted] = useState(false);
-    const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [gameActive, setGameActive] = useState(false);
     const [finalTime, setFinalTime] = useState<number>(0);
     const [showWrongMove, setShowWrongMove] = useState(false);
@@ -143,6 +143,7 @@ export function PositionElements() {
     }, []);
 
     useEffect(() => {
+        if (!unlockAudio) return;
         const unlock = () => unlockAudio();
         window.addEventListener("pointerdown", unlock, { once: true });
         return () => window.removeEventListener("pointerdown", unlock);
@@ -210,7 +211,11 @@ export function PositionElements() {
 
         const seedIndex = Math.floor(Math.random() * availableSeeds.length);
         const seed = availableSeeds[seedIndex];
-        setAvailableSeeds(prev => prev.filter((_, i) => i !== seedIndex));
+        setAvailableSeeds((prev) => {
+            const nextSeeds = [...prev];
+            nextSeeds.splice(seedIndex, 1);
+            return nextSeeds;
+        });
 
         const source = IMAGE_SOURCES[Math.floor(Math.random() * IMAGE_SOURCES.length)];
         const url = source(seed);
@@ -294,6 +299,8 @@ export function PositionElements() {
                 if (next === maxTime - 5) playEnding();
 
                 if (next >= maxTime) {
+                    stopEnding();
+                    stopBg();
                     clearInterval(interval);
                     return maxTime;
                 }
@@ -317,7 +324,7 @@ export function PositionElements() {
         e.preventDefault();
         if (!gameActive || !draggedTile) return;
 
-        const isCorrectDrop = draggedTile.bgX === target.x && draggedTile.bgY === target.y;
+        const isCorrectDrop = draggedTile.bgX === target.bgX && draggedTile.bgY === target.bgY;
 
         setTiles(tiles.map(t =>
             t.id === draggedTile.id ? { ...t, x: target.x, y: target.y } :
@@ -371,7 +378,7 @@ export function PositionElements() {
     };
 
     /* ---------- Event Handler for Bid ---------- */
-    const handler = useCallback((e: any) => {
+    const handlePuzzleRestart = useCallback((e: any) => {
         const { amount, gameId, practice, difficulty: incomingDifficulty } = e?.detail || {};
 
         if (gameId) localStorage.setItem("currentGameId", gameId);
@@ -393,12 +400,12 @@ export function PositionElements() {
 
         setTime(0);
         setMoveCount(0);
-    }, [availableSeeds, loadPuzzleImage, generateTiles]);
+    }, [availableSeeds, loadPuzzleImage]);
 
     useEffect(() => {
-        document.addEventListener("puzzle-restart", handler);
-        return () => document.removeEventListener("puzzle-restart", handler);
-    }, [handler, availableSeeds]);
+        document.addEventListener("puzzle-restart", handlePuzzleRestart);
+        return () => document.removeEventListener("puzzle-restart", handlePuzzleRestart);
+    }, [handlePuzzleRestart]);
 
     // Listen for difficulty changes
     useEffect(() => {
@@ -493,10 +500,7 @@ export function PositionElements() {
                                 <div
                                     key={tile.id}
                                     className="absolute box-border"
-                                    draggable={practiceMode || currentBid > 0}
-                                    onDragStart={() =>
-                                        (practiceMode || currentBid > 0) && handleDragStart(tile)
-                                    }
+                                    onDragStart={practiceMode || currentBid > 0 ? () => handleDragStart(tile) : undefined}
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, tile)}
                                     style={{

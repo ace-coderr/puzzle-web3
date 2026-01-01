@@ -5,7 +5,7 @@ import "./globals.css";
 
 import { AppWalletProvider } from "./components/appWalletProvider";
 import { Navbar } from "./components/navbar";
-import { SoundProvider } from "./components/context/soundPorvider";
+import { SoundProvider } from "./components/context/soundProvider";
 
 export const viewport: Viewport = {
   width: "device-width",
