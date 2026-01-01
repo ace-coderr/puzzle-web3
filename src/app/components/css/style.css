@@ -7,9 +7,7 @@
     font-size: 20px;
     font-weight: 600;
     color: #ffffff;
-    margin-top: -100px;
-    padding: 100px;
-    margin-top: 4%;
+    padding: 10px;
 }
 
 /* NAVBAR */
@@ -32,6 +30,15 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 32px;
+
+}
+
+:root {
+    --navbar-height: 80px;
+}
+
+.page-content {
+    padding-top: var(--navbar-height);
 }
 
 /* Logo */
@@ -76,6 +83,20 @@
     font-weight: 700;
 }
 
+.mute-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+}
+
+.mute-btn:hover {
+    color: #10b981;
+}
+
 .wallet-section {
     display: flex;
     align-items: center;
@@ -98,12 +119,12 @@
 .practice-mode1 {
     color: #FFF;
     margin-left: 45%;
-    padding-top: 12px;
+    /* padding-top: 12px; */
     font-size: 24px;
     font-weight: 900;
     font-family: poppins, sans-serif;
     cursor: pointer;
-    margin-top: 140px;
+    margin-top: 100px;
     margin-bottom: 34px;
 }
 
@@ -538,7 +559,6 @@
     text-align: center;
     font-size: 32px;
     font-weight: 900;
-    margin-bottom: 34px;
     background: linear-gradient(to right, #facc15, #f59e0b);
     -webkit-background-clip: text;
     background-clip: text;

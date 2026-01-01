@@ -31,72 +31,91 @@ export default function Modal({
 }: ModalProps) {
   if (!show) return null;
 
-  // Backgrounds & borders
-  const bgColor = {
-    default: "bg-gradient-to-br from-red-900/95 to-red-950/95",
-    success: "bg-gradient-to-br from-emerald-900/95 via-teal-900/95 to-green-900/95",
-    start: "bg-gradient-to-br from-blue-900/95 to-indigo-900/95",
-    leaderboard: "bg-gradient-to-br from-purple-900/95 to-pink-900/90",
-  }[variant];
-
-  const borderGlow = {
-    default: "border-red-500/60 shadow-red-500/20",
-    success: "border-emerald-400/70 shadow-emerald-500/40",
-    start: "border-blue-400/70 shadow-blue-500/40",
-    leaderboard: "border-purple-400/70 shadow-purple-500/40",
+  const styles = {
+    default: {
+      bg: "bg-zinc-950/95",
+      border: "border-zinc-700",
+      accent: "text-zinc-200",
+      button: "from-zinc-700 to-zinc-600",
+    },
+    start: {
+      bg: "bg-gradient-to-br from-blue-950 to-indigo-950",
+      border: "border-blue-500/40",
+      accent: "text-blue-300",
+      button: "from-blue-500 to-indigo-500",
+    },
+    success: {
+      bg: "bg-gradient-to-br from-emerald-950 to-teal-950",
+      border: "border-emerald-500/40",
+      accent: "text-emerald-300",
+      button: "from-emerald-500 to-teal-500",
+    },
+    leaderboard: {
+      bg: "bg-gradient-to-br from-purple-950 to-fuchsia-950",
+      border: "border-purple-500/40",
+      accent: "text-purple-300",
+      button: "from-purple-500 to-fuchsia-500",
+    },
   }[variant];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl bg-black/80">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
       <div
-        className={`relative w-full max-w-lg mx-4 p-10 rounded-3xl shadow-2xl border-2 ${bgColor} ${borderGlow} text-white
-                    transform transition-all duration-500 animate-in fade-in zoom-in-95`}
+        className={`
+          relative w-full max-w-xl mx-4
+          rounded-2xl border ${styles.border}
+          ${styles.bg}
+          shadow-[0_20px_80px_rgba(0,0,0,0.8)]
+          px-8 py-10
+          animate-in fade-in zoom-in-95 duration-300
+        `}
       >
-        {/* X BUTTON */}
+        {/* CLOSE BUTTON */}
         {onClose && !hideCloseButton && (
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 w-12 h-12 rounded-full 
-                       bg-white/5 backdrop-blur-xl border border-white/20
-                       hover:bg-emerald-500/20 hover:border-emerald-400/60 
-                       hover:shadow-2xl hover:shadow-emerald-500/30
-                       active:scale-90
-                       transition-all duration-300 
-                       flex items-center justify-center"
+            className="
+              absolute top-4 right-4
+              p-2 rounded-full
+              bg-white/5 hover:bg-white/10
+              transition
+            "
           >
-            <X className="w-7 h-7 text-white/60 hover:text-emerald-300 transition" />
+            <X className="w-5 h-5 text-white/70" />
           </button>
         )}
 
-        {/* Title */}
+        {/* TITLE */}
         {title && (
-          <h2 className="text-4xl font-black text-center mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/70">
+          <h2 className="text-3xl font-extrabold text-center text-white mb-4 tracking-tight">
             {title}
           </h2>
         )}
 
-        {/* Message */}
+        {/* MESSAGE */}
         {message && (
-          <p className="text-center text-lg text-white/80 mb-8 leading-relaxed">
+          <p className="text-center text-base text-white/70 max-w-md mx-auto mb-6">
             {message}
           </p>
         )}
 
-        {children && <div className="text-center mb-10">{children}</div>}
+        {/* BODY */}
+        {children && <div className="mb-8">{children}</div>}
 
-        {/* Footer Buttons */}
+        {/* FOOTER */}
         {!hideFooter && (
-          <div className="flex justify-center gap-5">
+          <div className="flex justify-center gap-4">
             {onConfirm && (
               <button
                 onClick={onConfirm}
-                className="px-10 py-5 bg-gradient-to-r from-emerald-500 to-teal-600 
-                   hover:from-emerald-400 hover:to-teal-500
-                   active:scale-95
-                   text-white font-black text-xl rounded-2xl 
-                   shadow-2xl shadow-emerald-600/50
-                   transform transition-all duration-300 
-                   hover:shadow-emerald-500/60 hover:scale-105"
+                className={`
+                  px-8 py-4 rounded-xl
+                  text-lg font-bold text-white
+                  bg-gradient-to-r ${styles.button}
+                  hover:brightness-110
+                  active:scale-95
+                  transition
+                `}
               >
                 {confirmText}
               </button>

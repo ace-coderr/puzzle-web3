@@ -113,8 +113,9 @@ export default function RewardPage() {
         onClose={() => setModal({ open: false })}
       >
         <div className="modal-content">
-          <p className="modal-amount">+{modal.amount} SOL</p>
-          <p className="tx">{modal.tx}</p>
+          <p className="modal-amount">
+            +{Number(modal.amount).toFixed(6).replace(/\.?0+$/, "")} SOL
+          </p>
           {modal.tx && (
             <a
               href={`https://orb.helius.xyz/tx/${modal.tx}?cluster=devnet`}

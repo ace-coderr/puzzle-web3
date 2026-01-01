@@ -57,7 +57,9 @@ export default function RootLayout({
       >
         <AppWalletProvider>
           <Navbar />
-          <main className="min-h-screen">{children}</main>
+          <main className="min-h-screen page-content">
+            {children}
+          </main>
         </AppWalletProvider>
       </body>
     </html>

@@ -6,7 +6,8 @@ import dynamic from "next/dynamic";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { useEffect, useState } from "react";
 import { getUserSOLBalance } from "./getUserBalance";
-import { Home, Gift, Trophy } from "lucide-react";
+import { Home, Gift, Trophy, Volume2, VolumeX } from "lucide-react";
+import { useGameSounds } from "@/hooks/useGameSounds";
 
 const WalletMultiButtonDynamic = dynamic(
   async () =>
@@ -18,6 +19,8 @@ export function Navbar() {
   const { publicKey, connected } = useWallet();
   const pathname = usePathname();
 
+  const { toggleMute, unlockAudio } = useGameSounds();
+  const [muted, setMuted] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -46,16 +49,18 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="navbar">
+    <nav
+      className="navbar"
+      onClick={unlockAudio}
+    >
       <div className="nav-container">
-        {/* ================= LEFT: LOGO (ALWAYS VISIBLE) ================= */}
+        {/* ================= LOGO ================= */}
         <Link href="/" className="logo">
           <img src="/images/logo.png" alt="Logo" />
         </Link>
 
         {/* ================= RIGHT SIDE ================= */}
         <div className="nav-right">
-          {/* ---------- NAV LINKS (ONLY AFTER CONNECT) ---------- */}
           {mounted && connected && (
             <div className="nav-links">
               {links.map((link) => {
@@ -74,7 +79,19 @@ export function Navbar() {
             </div>
           )}
 
-          {/* ---------- WALLET / BALANCE ---------- */}
+          {/* 🔇 MUTE TOGGLE */}
+          <button
+            className="mute-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMuted(toggleMute());
+            }}
+            title={muted ? "Unmute" : "Mute"}
+          >
+            {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          </button>
+
+          {/* ========== WALLET / BALANCE ========== */}
           <div className="wallet-section">
             {mounted && !connected && (
               <WalletMultiButtonDynamic className="wallet-btn" />

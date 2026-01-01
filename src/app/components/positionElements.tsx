@@ -386,42 +386,42 @@ export function PositionElements() {
         return () => document.removeEventListener("difficulty-change", onDifficultyChange);
     }, []);
 
+
     /* -------------------------------------------------------------
      RENDER
      ------------------------------------------------------------- */
     return (
         <>
             {/* ----- Practice Toggle Button ----- */}
-            {!practiceMode && (
-                <div>
-                    <button
-                        onClick={() => {
-                            if (gameActive) {
-                                setShowGameActiveWarning(true);
-                                return;
-                            }
+            <div>
+                <button
+                    onClick={() => {
+                        if (gameActive) {
+                            setShowGameActiveWarning(true);
+                            return;
+                        }
 
-                            setPracticeMode(true);
-                            setDifficulty("easy");
-                            setMaxMoves(40);
-                            setMaxTime(180);
+                        setPracticeMode(true);
+                        setDifficulty("easy");
+                        setMaxMoves(40);
+                        setMaxTime(180);
 
-                            setPracticeType("start");
-                            setShowPracticeModal(true);
+                        setPracticeType("start");
+                        setShowPracticeModal(true);
 
-                            loadPuzzleImage(false);
-                            setMoveCount(0);
-                            setTime(0);
+                        loadPuzzleImage(false);
+                        setMoveCount(0);
+                        setTime(0);
 
-                            setIsWin(false);
-                            setIsGameOver(false);
-                            setGameActive(false);
-                        }}
-                        className="practice-mode1">
-                        Practice Mode
-                    </button>
-                </div>
-            )}
+                        setIsWin(false);
+                        setIsGameOver(false);
+                        setGameActive(false);
+                    }}
+                    className="practice-mode1"
+                >
+                    Practice Mode
+                </button>
+            </div>
 
             {/* ----- Counters ----- */}
             {gameActive && (
