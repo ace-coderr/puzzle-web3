@@ -1,120 +1,93 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 
-// Game sound hook for managing audio playback
+let audioUnlocked = false;
+let muted = false;
+
+const audios: HTMLAudioElement[] = [];
+
 export const useGameSounds = () => {
-  const unlockedRef = useRef(false);
-  const mutedRef = useRef(false);
-  const endingPlayedRef = useRef(false);
+    const bgRef = useRef<HTMLAudioElement | null>(null);
+    const endingRef = useRef<HTMLAudioElement | null>(null);
 
-  /* ---------- AUDIO INSTANCES ---------- */
-  const sounds = useRef({
-    win: new Audio("/sounds/win.mp3"),
-    lose: new Audio("/sounds/lose.mp3"),
-    perfect: new Audio("/sounds/perfect.mp3"),
-    danger: new Audio("/sounds/danger.mp3"),
-    ending: new Audio("/sounds/ending.mp3"),
-    bg: new Audio("/sounds/background.mp3"),
-  });
+    /* 🔓 UNLOCK AUDIO (MOBILE FIX) */
+    const unlockAudio = () => {
+        if (audioUnlocked) return;
 
-  /* ---------- INITIAL SETUP ---------- */
-  useEffect(() => {
-    Object.values(sounds.current).forEach((a) => {
-      a.preload = "auto";
-    });
+        const silent = new Audio();
+        silent.play().catch(() => { });
+        audioUnlocked = true;
+    };
 
-    sounds.current.bg.loop = true;
-    sounds.current.bg.volume = 0.25;
-    sounds.current.ending.volume = 0.5;
-  }, []);
+    /* 🔇 GLOBAL MUTE */
+    const setMuted = (state: boolean) => {
+        muted = state;
+        audios.forEach((a) => (a.muted = state));
+        if (bgRef.current) bgRef.current.muted = state;
+        if (endingRef.current) endingRef.current.muted = state;
+    };
 
-  /* ---------- MOBILE UNLOCK ---------- */
-  const unlockAudio = () => {
-    if (unlockedRef.current) return;
+    /* 🛑 STOP EVERYTHING */
+    const stopAll = () => {
+        audios.forEach((a) => {
+            a.pause();
+            a.currentTime = 0;
+        });
+    };
 
-    Object.values(sounds.current).forEach((a) => {
-      a.play().then(() => {
-        a.pause();
-        a.currentTime = 0;
-      }).catch(() => {});
-    });
+    /* 🎵 BACKGROUND */
+    const playBg = () => {
+        if (bgRef.current || muted) return;
 
-    unlockedRef.current = true;
-  };
+        const audio = new Audio("/sounds/bg.mp3");
+        audio.loop = true;
+        audio.volume = 0.35;
+        audio.muted = muted;
+        audio.play().catch(() => { });
+        bgRef.current = audio;
+    };
 
-  /* ---------- CORE PLAY ---------- */
-  const play = (key: keyof typeof sounds.current, volume?: number) => {
-    if (mutedRef.current) return;
+    const stopBg = () => {
+        bgRef.current?.pause();
+        bgRef.current = null;
+    };
 
-    const audio = sounds.current[key];
-    if (!audio) return;
+    /* 🏁 ENDING */
+    const playEnding = () => {
+        if (muted) return;
 
-    audio.pause();
-    audio.currentTime = 0;
-    if (volume !== undefined) audio.volume = volume;
+        endingRef.current?.pause();
+        const audio = new Audio("/sounds/ending.mp3");
+        audio.volume = 0.6;
+        audio.muted = muted;
+        audio.play().catch(() => { });
+        endingRef.current = audio;
+    };
 
-    audio.play().catch(() => {});
-  };
+    const stopEnding = () => endingRef.current?.pause();
 
-  /* ---------- SAFE ENDING ---------- */
-  const playEnding = () => {
-    if (endingPlayedRef.current || mutedRef.current) return;
-    endingPlayedRef.current = true;
-    play("ending");
-  };
+    /* 🔊 EFFECT HELPER */
+    const playEffect = (src: string, volume = 0.7) => {
+        if (muted) return;
+        const audio = new Audio(src);
+        audio.volume = volume;
+        audio.muted = muted;
+        audios.push(audio);
+        audio.play().catch(() => { });
+    };
 
-  /* ---------- STOP CONTROLS ---------- */
-  const stopEnding = () => {
-    sounds.current.ending.pause();
-    sounds.current.ending.currentTime = 0;
-    endingPlayedRef.current = false;
-  };
-
-  const playBg = () => {
-    if (mutedRef.current) return;
-    sounds.current.bg.play().catch(() => {});
-  };
-
-  const stopBg = () => {
-    sounds.current.bg.pause();
-    sounds.current.bg.currentTime = 0;
-  };
-
-  const stopAll = () => {
-    Object.values(sounds.current).forEach((a) => {
-      a.pause();
-      a.currentTime = 0;
-    });
-    endingPlayedRef.current = false;
-  };
-
-  /* ---------- MUTE ---------- */
-  const toggleMute = () => {
-    mutedRef.current = !mutedRef.current;
-
-    if (mutedRef.current) {
-      stopAll();
-    } else {
-      playBg();
-    }
-
-    return mutedRef.current;
-  };
-
-  return {
-    unlockAudio,
-    toggleMute,
-    playBg,
-    stopBg,
-
-    playWin: () => play("win", 0.7),
-    playLose: () => play("lose", 0.6),
-    playPerfect: () => play("perfect", 0.6),
-    playDanger: () => play("danger", 0.6),
-    playEnding,
-
-    stopEnding,
-    stopAll,
-  };
+    return {
+        unlockAudio,
+        setMuted,
+        stopAll,
+        playBg,
+        stopBg,
+        playEnding,
+        stopEnding,
+        playWin: () => playEffect("/sounds/win.mp3"),
+        playLose: () => playEffect("/sounds/lose.mp3"),
+        playPerfect: () => playEffect("/sounds/perfect.mp3"),
+        playDanger: () => playEffect("/sounds/tick.mp3", 0.5),
+    };
 };

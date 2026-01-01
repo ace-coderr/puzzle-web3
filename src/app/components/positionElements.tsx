@@ -5,7 +5,7 @@ import { useCallback } from "react";
 import Modal from "./modal";
 import { useRouter } from "next/navigation";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { useGameSounds } from "@/hooks/useGameSounds";
+import { useSound } from "./context/soundPorvider";
 import PracticeModal from "./practiceModal";
 
 export type Tile = {
@@ -97,12 +97,17 @@ export function PositionElements() {
     const { publicKey } = useWallet();
     const router = useRouter();
     const {
-        playWin,
-        playLose,
-        playPerfect,
-        playDanger,
-        playEnding,
-    } = useGameSounds();
+  playBg,
+  stopBg,
+  playWin,
+  playLose,
+  playPerfect,
+  playDanger,
+  playEnding,
+  stopEnding,
+  stopAll,
+  unlockAudio,
+} = useSound();
 
     // CORE STATES
     const [imageUrl, setImageUrl] = useState<string>("/images/preview.jpg");
@@ -121,6 +126,8 @@ export function PositionElements() {
     const [finalTime, setFinalTime] = useState<number>(0);
     const [showWrongMove, setShowWrongMove] = useState(false);
 
+    const gameEndedRef = useRef(false);
+
     const [availableSeeds, setAvailableSeeds] = useState<number[]>([]);
 
     // Practice Mode
@@ -135,6 +142,11 @@ export function PositionElements() {
         setAvailableSeeds(shuffleArray(seeds));
     }, []);
 
+    useEffect(() => {
+        const unlock = () => unlockAudio();
+        window.addEventListener("pointerdown", unlock, { once: true });
+        return () => window.removeEventListener("pointerdown", unlock);
+    }, [unlockAudio]);
 
     /* ---------- Difficulty ---------- */
     const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
@@ -233,10 +245,15 @@ export function PositionElements() {
         }
         else {
             if (won) {
+                gameEndedRef.current = true;
                 setGameActive(false);
                 setFinalTime(time);
                 setIsWin(true);
+
+                stopEnding();
+                stopBg();
                 playWin();
+
                 saveResult("WIN", {
                     walletAddress: publicKey?.toString(),
                     moves: moveCount,
@@ -245,9 +262,14 @@ export function PositionElements() {
                     difficulty
                 });
             } else if (moveCount >= maxMoves || time >= maxTime) {
+                gameEndedRef.current = true;
                 setIsGameOver(true);
                 setGameActive(false);
+
+                stopEnding();
+                stopBg();
                 playLose();
+
                 saveResult("LOSE", {
                     walletAddress: publicKey?.toString(),
                     moves: moveCount,
@@ -262,22 +284,20 @@ export function PositionElements() {
     /* ---------- Timer ---------- */
     useEffect(() => {
         if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-
         if (!gameActive) return;
 
         const interval = setInterval(() => {
             setTime((t) => {
-                const newTime = t + 1;
+                const next = t + 1;
 
-                if (newTime >= maxTime - 5) {
-                    playEnding();
-                }
+                if (next === 1) playBg();
+                if (next === maxTime - 5) playEnding();
 
-                if (newTime >= maxTime) {
+                if (next >= maxTime) {
                     clearInterval(interval);
                     return maxTime;
                 }
-                return newTime;
+                return next;
             });
         }, 1000);
 
@@ -329,6 +349,12 @@ export function PositionElements() {
 
     /* ---------------------- RESTART ---------------------- */
     const handleRestart = () => {
+        gameEndedRef.current = false;
+
+        stopAll();
+        stopBg();
+        stopEnding();
+
         setCurrentBid(0);
         setBidStarted(false);
         setShowStartModal(false);

@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
+
 import { AppWalletProvider } from "./components/appWalletProvider";
 import { Navbar } from "./components/navbar";
+import { SoundProvider } from "./components/context/soundPorvider";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -28,7 +30,6 @@ export const metadata: Metadata = {
   metadataBase: new URL("http://localhost:3000"),
 };
 
-// Root Layout
 export default function RootLayout({
   children,
 }: {
@@ -37,14 +38,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <head>
-        {/* Favicon */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
-        {/* Solana Wallet Adapter CSS */}
         <link
           rel="stylesheet"
           href="https://unpkg.com/@solana/wallet-adapter-react-ui/styles.css"
         />
       </head>
+
       <body
         className={`
           ${GeistSans.variable}
@@ -55,12 +55,17 @@ export default function RootLayout({
           min-h-screen
         `}
       >
-        <AppWalletProvider>
-          <Navbar />
-          <main className="min-h-screen page-content">
-            {children}
-          </main>
-        </AppWalletProvider>
+        {/* PROVIDERS */}
+        <SoundProvider>
+          <AppWalletProvider>
+            <Navbar />
+
+            <main className="min-h-screen page-content">
+              {children}
+            </main>
+
+          </AppWalletProvider>
+        </SoundProvider>
       </body>
     </html>
   );
