@@ -20,23 +20,37 @@ export function Navbar() {
   const { publicKey, connected } = useWallet();
   const pathname = usePathname();
 
-  /* 🔧 UPDATED: remove toggleMute */
-  const { unlockAudio, setMuted: setSoundMuted } = useGameSounds();
+  const {
+    unlockAudio,
+    setMuted: setSoundMuted,
+    playDanger,
+    playBg,
+  } = useGameSounds();
 
   const [muted, setMuted] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  /* ✅ CLIENT MOUNT */
   useEffect(() => setMounted(true), []);
 
-  /* 🔊 MOBILE AUDIO UNLOCK (ONCE) */
+  // UNLOCK AUDIO ON FIRST INTERACTION
   useEffect(() => {
-    const unlock = () => unlockAudio();
-    window.addEventListener("pointerdown", unlock, { once: true });
-    return () => window.removeEventListener("pointerdown", unlock);
-  }, [unlockAudio]);
+    const handleFirstInteraction = () => {
+      unlockAudio();
+      playBg();
+    };
 
-  /* 💰 BALANCE */
+    window.addEventListener("pointerdown", handleFirstInteraction, { once: true });
+    window.addEventListener("keydown", handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    };
+  }, [unlockAudio, playBg]);
+
+  /* BALANCE */
   useEffect(() => {
     if (!publicKey) {
       setBalance(null);
@@ -59,6 +73,16 @@ export function Navbar() {
     };
   }, [publicKey]);
 
+  /* GLOBAL CLICK SOUND */
+  useEffect(() => {
+    const handleClick = () => {
+      if (!muted) playDanger();
+    };
+
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [playDanger, muted]);
+
   const links = [
     { href: "/", label: "Home", icon: <Home size={18} /> },
     { href: "/reward", label: "Rewards", icon: <Gift size={18} /> },
@@ -68,11 +92,13 @@ export function Navbar() {
   return (
     <nav className="navbar">
       <div className="nav-container">
+
         {/* LOGO */}
         <Link href="/" className="logo">
           <img src="/images/logo.png" alt="Logo" />
         </Link>
 
+        {/* NAVIGATION LINKS */}
         <div className="nav-right">
           {mounted && connected && (
             <div className="nav-links">
@@ -90,16 +116,14 @@ export function Navbar() {
             </div>
           )}
 
-          {/* 🔇 MUTE TOGGLE — FIXED */}
+          {/* MUTE TOGGLE */}
           <button
             className="mute-btn"
             onClick={(e) => {
               e.stopPropagation();
-
-              /* 🔧 UPDATED LOGIC */
-              const nextMuted = !muted;
-              setMuted(nextMuted);
-              setSoundMuted(nextMuted);
+              const next = !muted;
+              setMuted(next);
+              setSoundMuted(next);
             }}
             title={muted ? "Unmute" : "Mute"}
           >
