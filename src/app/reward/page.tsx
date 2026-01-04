@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import Modal from "../components/modal";
 import confetti from "canvas-confetti";
+import { useGameSounds } from "@/hooks/useGameSounds"; // Import the sound hook
 
 type GameResult = {
   id: string;
@@ -19,6 +20,7 @@ type GameResult = {
 
 export default function RewardPage() {
   const { publicKey } = useWallet();
+  const { playClaim, unlockAudio } = useGameSounds(); // Add sound functions
 
   const [results, setResults] = useState<GameResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +28,11 @@ export default function RewardPage() {
   const [modal, setModal] = useState<{ open: boolean; amount?: string; tx?: string }>({
     open: false,
   });
+
+  // Unlock audio on component mount
+  useEffect(() => {
+    unlockAudio();
+  }, [unlockAudio]);
 
   useEffect(() => {
     if (!publicKey) return;
@@ -42,22 +49,52 @@ export default function RewardPage() {
 
   const handleClaim = async (gameId: string) => {
     setClaiming(gameId);
-    const res = await fetch("/api/rewards", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameId, walletAddress: publicKey!.toBase58() }),
-    });
-    const data = await res.json();
 
-    confetti({
-      particleCount: 140,
-      spread: 70,
-      origin: { y: 0.65 },
-    });
+    try {
+      const res = await fetch("/api/rewards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameId, walletAddress: publicKey!.toBase58() }),
+      });
 
-    setModal({ open: true, amount: data.amount, tx: data.txSignature });
-    setClaiming(null);
-    fetchHistory();
+      if (!res.ok) {
+        throw new Error(`Claim failed: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // Play claim sound
+      playClaim();
+
+      // Trigger confetti
+      confetti({
+        particleCount: 140,
+        spread: 70,
+        origin: { y: 0.65 },
+      });
+
+      // Show success modal
+      setModal({
+        open: true,
+        amount: data.amount,
+        tx: data.txSignature
+      });
+
+      // Refresh the list
+      fetchHistory();
+
+    } catch (error) {
+      console.error("Claim error:", error);
+      // Optionally show an error message here
+    } finally {
+      setClaiming(null);
+    }
+  };
+
+  // Add click sound for claim button
+  const handleClaimClick = (gameId: string) => {
+    unlockAudio(); // Ensure audio is unlocked
+    handleClaim(gameId);
   };
 
   if (!publicKey) return <div className="centered">Connect wallet to view rewards</div>;
@@ -82,11 +119,11 @@ export default function RewardPage() {
                   {r.won ? (
                     <>
                       <span className="amount">+{r.reward ?? 0} SOL</span>
-                      {!r.claimed && r.reward && (
+                      {!r.claimed && r.reward && r.reward > 0 && (
                         <button
                           className="claim-btn"
                           disabled={claiming === r.id}
-                          onClick={() => handleClaim(r.id)}
+                          onClick={() => handleClaimClick(r.id)}
                         >
                           {claiming === r.id ? "Claiming..." : "Claim"}
                         </button>
@@ -114,8 +151,9 @@ export default function RewardPage() {
       >
         <div className="modal-content">
           <p className="modal-amount">
-            +{Number(modal.amount).toFixed(6).replace(/\.?0+$/, "")} SOL
+            +{Number(modal.amount || 0).toFixed(6).replace(/\.?0+$/, "")} SOL
           </p>
+          <p className="modal-subtitle">Reward successfully claimed!</p>
           {modal.tx && (
             <a
               href={`https://orb.helius.xyz/tx/${modal.tx}?cluster=devnet`}
