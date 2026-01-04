@@ -24,7 +24,7 @@ export function Navbar() {
     unlockAudio,
     setMuted: setSoundMuted,
     playBg,
-    preloadSounds,
+    playClick,
   } = useGameSounds();
 
   const [muted, setMuted] = useState(false);
@@ -39,7 +39,6 @@ export function Navbar() {
     const handleFirstInteraction = () => {
       unlockAudio();
       playBg();
-      preloadSounds();
     };
 
     window.addEventListener("pointerdown", handleFirstInteraction, { once: true });
@@ -49,7 +48,7 @@ export function Navbar() {
       window.removeEventListener("pointerdown", handleFirstInteraction);
       window.removeEventListener("keydown", handleFirstInteraction);
     };
-  }, [unlockAudio, playBg, preloadSounds]);
+  }, [unlockAudio, playBg]);
 
   /* BALANCE */
   useEffect(() => {
@@ -74,7 +73,27 @@ export function Navbar() {
     };
   }, [publicKey]);
 
-  // REMOVED THE PROBLEMATIC GLOBAL CLICK HANDLER
+  /* GLOBAL CLICK SOUND - MODIFIED TO EXCLUDE GAME ELEMENTS */
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (muted) return;
+
+      // Don't play click sound on game elements
+      const target = e.target as HTMLElement;
+      const isGameElement =
+        target.closest('.puzzle-board') ||
+        target.closest('.tile-element') ||
+        target.closest('[draggable="true"]') ||
+        target.closest('.puzzle-tile');
+
+      if (!isGameElement) {
+        playClick();
+      }
+    };
+
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [playClick, muted]);
 
   const links = [
     { href: "/", label: "Home", icon: <Home size={18} /> },
@@ -101,6 +120,9 @@ export function Navbar() {
                   href={link.href}
                   className={`nav-link ${pathname === link.href ? "active" : ""
                     }`}
+                  onClick={(e) => {
+                    if (!muted) playClick();
+                  }}
                 >
                   {link.icon}
                   <span>{link.label}</span>
@@ -117,6 +139,7 @@ export function Navbar() {
               const next = !muted;
               setMuted(next);
               setSoundMuted(next);
+              if (!next) playClick();
             }}
             title={muted ? "Unmute" : "Mute"}
           >
@@ -126,12 +149,22 @@ export function Navbar() {
           {/* WALLET */}
           <div className="wallet-section">
             {mounted && !connected && (
-              <WalletMultiButtonDynamic className="wallet-btn" />
+              <WalletMultiButtonDynamic
+                className="wallet-btn"
+                onClick={() => {
+                  if (!muted) playClick();
+                }}
+              />
             )}
 
             {mounted && connected && publicKey && (
               <>
-                <WalletMultiButtonDynamic className="wallet-btn" />
+                <WalletMultiButtonDynamic
+                  className="wallet-btn"
+                  onClick={() => {
+                    if (!muted) playClick();
+                  }}
+                />
                 <span className="balance">
                   {balance !== null
                     ? `${balance.toFixed(4)} SOL`

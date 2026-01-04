@@ -105,6 +105,7 @@ export function PositionElements() {
         stopEnding,
         stopAll,
         unlockAudio,
+        playClick,
     } = useGameSounds();
 
     // CORE STATES
@@ -288,6 +289,8 @@ export function PositionElements() {
     const handleDragStart = (tile: Tile) => {
         if (!gameActive) return;
         setDraggedTile(tile);
+        // Play drag start sound
+        playClick();
     };
 
     const handleDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -295,9 +298,6 @@ export function PositionElements() {
     const handleDrop = (e: React.DragEvent, target: Tile) => {
         e.preventDefault();
         if (!gameActive || !draggedTile) return;
-
-        // Ensure audio context is active
-        unlockAudio();
 
         const isCorrectDrop = draggedTile.bgX === target.x && draggedTile.bgY === target.y;
         setTiles((tiles) =>
@@ -319,7 +319,7 @@ export function PositionElements() {
         if (isCorrectDrop) {
             playPerfect();
         } else {
-            // Play danger sound immediately
+            // Play danger sound for wrong move
             playDanger();
             setShowWrongMove(true);
             setTimeout(() => setShowWrongMove(false), 900);
@@ -417,6 +417,7 @@ export function PositionElements() {
                         setIsWin(false);
                         setIsGameOver(false);
                         setGameActive(false);
+                        playClick();
                     }}
                     className="practice-mode1"
                 >
@@ -471,11 +472,15 @@ export function PositionElements() {
                             return tiles.map((tile) => (
                                 <div
                                     key={tile.id}
-                                    className="absolute box-border"
+                                    className="absolute box-border tile-element puzzle-tile"
                                     draggable={practiceMode || currentBid > 0}
                                     onDragStart={() => handleDragStart(tile)}
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, tile)}
+                                    onClick={(e) => {
+                                        // Prevent the global click handler from firing on tile clicks
+                                        e.stopPropagation();
+                                    }}
                                     style={{
                                         width: `${tileW}vw`,
                                         height: `${tileH}vw`,
@@ -531,9 +536,13 @@ export function PositionElements() {
                 type={practiceType}
                 moves={moveCount}
                 time={finalPracticeTime}
-                onClose={() => setShowPracticeModal(false)}
+                onClose={() => {
+                    setShowPracticeModal(false);
+                    playClick();
+                }}
                 onConfirm={() => {
                     setShowPracticeModal(false);
+                    playClick();
                     if (practiceType === "start") {
                         setGameActive(true);
                     } else {
@@ -546,7 +555,10 @@ export function PositionElements() {
                 show={showGameActiveWarning}
                 title="Game Active"
                 message="Your game is currently active. Finish it before starting practice mode."
-                onClose={() => setShowGameActiveWarning(false)}
+                onClose={() => {
+                    setShowGameActiveWarning(false);
+                    playClick();
+                }}
                 singleButton={true}
             />
 
@@ -560,6 +572,7 @@ export function PositionElements() {
                 onConfirm={() => {
                     setShowStartModal(false);
                     setGameActive(true);
+                    playClick();
                 }}
             >
                 <div className="text-center py-16">
@@ -581,8 +594,14 @@ export function PositionElements() {
                 variant="success"
                 hideCloseButton={true}
                 confirmText="CLAIM REWARD"
-                onConfirm={() => router.push("/reward")}
-                onClose={handleRestart}
+                onConfirm={() => {
+                    router.push("/reward");
+                    playClick();
+                }}
+                onClose={() => {
+                    handleRestart();
+                    playClick();
+                }}
                 singleButton={true}
             >
                 <div className="text-center py-12">
@@ -607,7 +626,10 @@ export function PositionElements() {
                 title="Game Over"
                 message="Out of moves or time!"
                 show={isGameOver}
-                onClose={handleRestart}
+                onClose={() => {
+                    handleRestart();
+                    playClick();
+                }}
                 singleButton={true}
             />
         </>
