@@ -22,6 +22,24 @@ export const useGameSounds = () => {
         audioUnlocked = true;
     };
 
+    // PRELOAD SOUNDS
+    const preloadSounds = () => {
+        const soundsToPreload = [
+            "/sounds/tick.mp3",
+            "/sounds/win.mp3",
+            "/sounds/lose.mp3",
+            "/sounds/perfect.mp3",
+            "/sounds/background.mp3",
+            "/sounds/ending.mp3"
+        ];
+
+        soundsToPreload.forEach(src => {
+            const audio = new Audio();
+            audio.src = src;
+            audio.load();
+        });
+    };
+
     // PREPARE BACKGROUND AUDIO
     const prepareBg = () => {
         if (bgRef.current) return;
@@ -122,6 +140,7 @@ export const useGameSounds = () => {
         playWin: () => playEffect("/sounds/win.mp3"),
         playLose: () => playEffect("/sounds/lose.mp3"),
         playPerfect: () => playEffect("/sounds/perfect.mp3"),
-        playDanger: () => playEffect("/sounds/tick.mp3", 0.5),
+        playDanger: () => playEffect("/sounds/danger.mp3", 0.8),
+        preloadSounds,
     };
 };

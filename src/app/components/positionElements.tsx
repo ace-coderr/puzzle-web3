@@ -295,6 +295,10 @@ export function PositionElements() {
     const handleDrop = (e: React.DragEvent, target: Tile) => {
         e.preventDefault();
         if (!gameActive || !draggedTile) return;
+
+        // Ensure audio context is active
+        unlockAudio();
+
         const isCorrectDrop = draggedTile.bgX === target.x && draggedTile.bgY === target.y;
         setTiles((tiles) =>
             tiles.map((t) =>
@@ -315,6 +319,7 @@ export function PositionElements() {
         if (isCorrectDrop) {
             playPerfect();
         } else {
+            // Play danger sound immediately
             playDanger();
             setShowWrongMove(true);
             setTimeout(() => setShowWrongMove(false), 900);

@@ -23,8 +23,8 @@ export function Navbar() {
   const {
     unlockAudio,
     setMuted: setSoundMuted,
-    playDanger,
     playBg,
+    preloadSounds,
   } = useGameSounds();
 
   const [muted, setMuted] = useState(false);
@@ -39,6 +39,7 @@ export function Navbar() {
     const handleFirstInteraction = () => {
       unlockAudio();
       playBg();
+      preloadSounds();
     };
 
     window.addEventListener("pointerdown", handleFirstInteraction, { once: true });
@@ -48,7 +49,7 @@ export function Navbar() {
       window.removeEventListener("pointerdown", handleFirstInteraction);
       window.removeEventListener("keydown", handleFirstInteraction);
     };
-  }, [unlockAudio, playBg]);
+  }, [unlockAudio, playBg, preloadSounds]);
 
   /* BALANCE */
   useEffect(() => {
@@ -73,15 +74,7 @@ export function Navbar() {
     };
   }, [publicKey]);
 
-  /* GLOBAL CLICK SOUND */
-  useEffect(() => {
-    const handleClick = () => {
-      if (!muted) playDanger();
-    };
-
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
-  }, [playDanger, muted]);
+  // REMOVED THE PROBLEMATIC GLOBAL CLICK HANDLER
 
   const links = [
     { href: "/", label: "Home", icon: <Home size={18} /> },
