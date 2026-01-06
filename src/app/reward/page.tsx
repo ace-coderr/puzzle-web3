@@ -145,25 +145,54 @@ export default function RewardPage() {
       <Modal
         show={modal.open}
         title="Reward Claimed!"
-        variant="success"
-        hideFooter
         onClose={() => setModal({ open: false })}
       >
-        <div className="modal-content">
-          <p className="modal-amount">
-            +{Number(modal.amount || 0).toFixed(6).replace(/\.?0+$/, "")} SOL
-          </p>
-          <p className="modal-subtitle">Reward successfully claimed!</p>
-          {modal.tx && (
+        <div className="confirm-details" style={{ alignItems: "center" }}>
+          <div style={{ textAlign: "center" }}>
+            <div
+              style={{
+                fontSize: 36,
+                fontWeight: 800,
+                color: "#3cff8f",
+                marginBottom: 8,
+              }}
+            >
+              +{Number(modal.amount || 0)
+                .toFixed(6)
+                .replace(/\.?0+$/, "")}{" "}
+              SOL
+            </div>
+
+            <div style={{ fontSize: 14, color: "#bdbdbd" }}>
+              Reward successfully claimed!
+            </div>
+          </div>
+        </div>
+
+        {modal.tx && (
+          <div style={{ textAlign: "center", marginTop: 12 }}>
             <a
               href={`https://orb.helius.xyz/tx/${modal.tx}?cluster=devnet`}
               target="_blank"
               rel="noopener noreferrer"
-              className="explorer-link"
+              style={{
+                fontSize: 13,
+                color: "#3cff8f",
+                textDecoration: "underline",
+              }}
             >
               View on Orb Explorer
             </a>
-          )}
+          </div>
+        )}
+
+        <div className="confirm-actions">
+          <button
+            className="btn confirm"
+            onClick={() => setModal({ open: false })}
+          >
+            OK
+          </button>
         </div>
       </Modal>
     </main>

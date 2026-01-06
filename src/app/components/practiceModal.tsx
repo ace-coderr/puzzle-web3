@@ -19,33 +19,26 @@ export default function PracticeModal({
     moves,
     time,
 }: PracticeModalProps) {
-    const variant =
-        type === "start" ? "start" : type === "win" ? "success" : "default";
-
     const config = {
         start: {
             title: "Practice Mode",
             confirmText: "Start Practice",
             content: (
-                <div className="space-y-6">
-                    <div className="rounded-xl border border-white/10 bg-white/5 p-6">
-                        <p className="text-sm uppercase tracking-wide text-white/50">
-                            Mode Info
-                        </p>
-                        <p className="text-lg font-semibold text-white mt-2">
-                            No rewards • No risk
-                        </p>
-                        <p className="text-sm text-white/60 mt-3 leading-relaxed">
-                            Practice mode lets you sharpen your skills without affecting
-                            your real balance or progress.
-                        </p>
+                <div className="confirm-details">
+                    <div className="confirm-row">
+                        <span>No rewards</span>
+                        <span className="value">No risk</span>
                     </div>
 
-                    <ul className="text-sm text-white/70 space-y-2 px-2">
-                        <li>• Unlimited retries</li>
-                        <li>• No SOL involved</li>
-                        <li>• Improve speed & accuracy</li>
-                    </ul>
+                    <div className="confirm-row">
+                        <span>Retries</span>
+                        <span className="value">Unlimited</span>
+                    </div>
+
+                    <div className="confirm-row highlight">
+                        <span>Mode</span>
+                        <span className="reward">Practice</span>
+                    </div>
                 </div>
             ),
         },
@@ -54,25 +47,16 @@ export default function PracticeModal({
             title: "Practice Complete",
             confirmText: "Continue",
             content: (
-                <div className="text-center space-y-4 py-8">
-                    <p className="text-5xl font-extrabold text-emerald-400">
-                        Well Done
-                    </p>
+                <div className="confirm-details">
+                    <div className="confirm-row">
+                        <span>Moves</span>
+                        <span className="value">{moves}</span>
+                    </div>
 
-                    <p className="text-lg text-white/80">
-                        Completed in{" "}
-                        <span className="text-emerald-300 font-semibold">
-                            {moves}
-                        </span>{" "}
-                        moves •{" "}
-                        <span className="text-emerald-300 font-semibold">
-                            {time}s
-                        </span>
-                    </p>
-
-                    <p className="text-sm text-white/60 max-w-sm mx-auto">
-                        This was a practice run. Ready to try a real game?
-                    </p>
+                    <div className="confirm-row highlight">
+                        <span>Time</span>
+                        <span className="reward">{time}s</span>
+                    </div>
                 </div>
             ),
         },
@@ -81,31 +65,35 @@ export default function PracticeModal({
             title: "Practice Ended",
             confirmText: "Try Again",
             content: (
-                <div className="text-center space-y-4 py-8">
-                    <p className="text-4xl font-bold text-white">
-                        Out of moves or time
-                    </p>
+                <div className="confirm-details">
+                    <div className="confirm-row">
+                        <span>Result</span>
+                        <span className="value">Out of time</span>
+                    </div>
 
-                    <p className="text-sm text-white/60 max-w-sm mx-auto">
-                        No worries — practice is about learning. Try again and improve
-                        your strategy.
-                    </p>
+                    <div className="confirm-row highlight">
+                        <span>Status</span>
+                        <span className="reward">Practice</span>
+                    </div>
                 </div>
             ),
         },
     }[type];
 
     return (
-        <Modal
-            show={show}
-            title={config.title}
-            onClose={onClose}
-            onConfirm={onConfirm}
-            confirmText={config.confirmText}
-            variant={variant}
-            hideCloseButton
-        >
+        <Modal show={show} title={config.title} onClose={onClose}>
             {config.content}
+
+            {onConfirm && (
+                <div className="confirm-actions">
+                    <button
+                        className="btn confirm"
+                        onClick={onConfirm}
+                    >
+                        {config.confirmText}
+                    </button>
+                </div>
+            )}
         </Modal>
     );
 }

@@ -531,7 +531,8 @@ export function PositionElements() {
             </div>
 
             {/* ---------- MODALS ---------- */}
-            {/* PRACTICE MODAL */}
+
+            {/* PRACTICE MODAL (already correct) */}
             <PracticeModal
                 show={showPracticeModal}
                 type={practiceType}
@@ -551,86 +552,181 @@ export function PositionElements() {
                     }
                 }}
             />
+
+            {/* GAME ACTIVE WARNING */}
             <Modal
                 show={showGameActiveWarning}
                 title="Game Active"
-                message="Your game is currently active. Finish it before starting practice mode."
                 onClose={() => {
                     setShowGameActiveWarning(false);
                     playClick();
                 }}
-                singleButton={true}
-            />
+            >
+                <div className="confirm-details">
+                    <div className="confirm-row">
+                        <span>
+                            Your game is currently active. Finish it before starting practice mode.
+                        </span>
+                    </div>
+                </div>
 
-            {/* BID CONFIRMED MODAL */}
+                <div className="confirm-actions">
+                    <button
+                        className="btn confirm"
+                        onClick={() => {
+                            setShowGameActiveWarning(false);
+                            playClick();
+                        }}
+                    >
+                        OK
+                    </button>
+                </div>
+            </Modal>
+
+            {/* BID CONFIRMED / START GAME */}
             <Modal
                 show={showStartModal}
-                title="BID LOCKED"
-                variant="start"
-                hideCloseButton={true}
-                confirmText="START GAME"
-                onConfirm={() => {
+                title="Bid Locked"
+                onClose={() => {
                     setShowStartModal(false);
-                    setGameActive(true);
                     playClick();
                 }}
             >
-                <div className="text-center py-16">
-                    <div className="text-9xl font-black text-emerald-400 leading-tight tracking-tight">
-                        {currentBid.toString().replace(/\.?0+$/, "")} SOL
+                <div className="confirm-details">
+                    <div className="confirm-row">
+                        <span>Bid Amount</span>
+                        <span className="value">{currentBid} SOL</span>
                     </div>
-                    <p className="text-2xl text-white mt-12 font-semibold">Your bid is locked.</p>
-                    <p className="text-xl text-gray-300 mt-4">
-                        {maxTime}s • {rewardMultiplier}x reward
-                    </p>
-                    <p className="text-lg text-red-400 font-bold mt-10">No refunds. Click when ready.</p>
+
+                    <div className="confirm-row">
+                        <span>Time Limit</span>
+                        <span className="value">{maxTime}s</span>
+                    </div>
+
+                    <div className="confirm-row highlight">
+                        <span>Reward</span>
+                        <span className="reward">{rewardMultiplier}x</span>
+                    </div>
+                </div>
+
+                <div className="confirm-actions">
+                    <button
+                        className="btn cancel"
+                        onClick={() => {
+                            setShowStartModal(false);
+                            playClick();
+                        }}
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        className="btn confirm"
+                        onClick={() => {
+                            setShowStartModal(false);
+                            setGameActive(true);
+                            playClick();
+                        }}
+                    >
+                        Start Game
+                    </button>
+                </div>
+
+                <div className="confirm-note">
+                    No refunds. Click confirm when ready.
                 </div>
             </Modal>
 
             {/* VICTORY MODAL */}
             <Modal
                 show={isWin}
-                title="PUZZLE VICTORY"
-                variant="success"
-                hideCloseButton={true}
-                confirmText="CLAIM REWARD"
-                onConfirm={() => {
-                    router.push("/reward");
-                    playClick();
-                }}
+                title="Puzzle Victory"
                 onClose={() => {
                     handleRestart();
                     playClick();
                 }}
-                singleButton={true}
             >
-                <div className="text-center py-12">
-                    <p className="text-8xl font-black text-emerald-400 drop-shadow-2xl leading-none animate-pulse">
-                        {Number((currentBid * rewardMultiplier).toFixed(6)).toString()}
-                    </p>
-                    <p className="text-5xl font-bold text-emerald-300 -mt-4 mb-10">SOL REWARD</p>
-                    <div className="space-y-4 text-white">
-                        <p className="font-bold">
-                            <span className="text-emerald-400">{finalTime}s</span>
-                        </p>
+                <div className="confirm-details" style={{ alignItems: "center" }}>
+                    <div style={{ textAlign: "center", marginBottom: 12 }}>
+                        <div
+                            style={{
+                                fontSize: 72,
+                                fontWeight: 900,
+                                color: "#3cff8f",
+                                lineHeight: 1,
+                            }}
+                        >
+                            {Number((currentBid * rewardMultiplier).toFixed(6)).toString()}
+                        </div>
+
+                        <div
+                            style={{
+                                fontSize: 28,
+                                fontWeight: 700,
+                                color: "#9cffc0",
+                                marginTop: -6,
+                            }}
+                        >
+                            SOL REWARD
+                        </div>
                     </div>
-                    <p className="text-lg text-gray-400 mt-8 font-medium">
-                        Reward processed instantly • No fees • Real wins
-                    </p>
+
+                    <div className="confirm-row">
+                        <span>Completion Time..</span>
+                        <span className="value">{finalTime}s</span>
+                    </div>
+
+                    <div className="confirm-row highlight">
+                        <span>Status..</span>
+                        <span className="reward">Success</span>
+                    </div>
+                </div>
+
+                <div className="confirm-actions">
+                    <button
+                        className="btn confirm"
+                        onClick={() => {
+                            router.push("/reward");
+                            playClick();
+                        }}
+                    >
+                        Claim Reward
+                    </button>
+                </div>
+
+                <div className="confirm-note">
+                    Reward processed instantly • No fees • Real wins
                 </div>
             </Modal>
 
+
             {/* GAME OVER MODAL */}
             <Modal
-                title="Game Over"
-                message="Out of moves or time!"
                 show={isGameOver}
+                title="Game Over"
                 onClose={() => {
                     handleRestart();
                     playClick();
                 }}
-                singleButton={true}
-            />
+            >
+                <div className="confirm-details">
+                    <div className="confirm-row">
+                        <span>Out of moves or time!</span>
+                    </div>
+                </div>
+
+                <div className="confirm-actions">
+                    <button
+                        className="btn confirm"
+                        onClick={() => {
+                            handleRestart();
+                            playClick();
+                        }}
+                    >
+                        Try Again
+                    </button>
+                </div>
+            </Modal>
         </>
     );
 }
