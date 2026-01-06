@@ -25,13 +25,22 @@ const TREASURY_WALLET =
   process.env.NEXT_PUBLIC_TREASURY_WALLET ||
   "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
 
-export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentProps) {
+const calculateReward = (
+  amount: number,
+  difficulty: keyof typeof DIFFICULTY_META
+) => amount * DIFFICULTY_META[difficulty].multiplier;
+
+export default function BidComponent({
+  wallet,
+  onBalanceUpdate,
+}: BidComponentProps) {
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [difficulty, setDifficulty] =
     useState<keyof typeof DIFFICULTY_META>("medium");
   const [hoveredDifficulty, setHoveredDifficulty] =
     useState<keyof typeof DIFFICULTY_META | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const rpcUrl =
     process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
@@ -41,7 +50,9 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
 
   const notifyDifficultyChange = (d: keyof typeof DIFFICULTY_META) => {
     setDifficulty(d);
-    document.dispatchEvent(new CustomEvent("difficulty-change", { detail: d }));
+    document.dispatchEvent(
+      new CustomEvent("difficulty-change", { detail: d })
+    );
   };
 
   const handleBid = async () => {
@@ -99,7 +110,12 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       document.dispatchEvent(new CustomEvent("recent-bid"));
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
-          detail: { walletAddress: fromPubkey.toBase58(), amount, gameId, difficulty },
+          detail: {
+            walletAddress: fromPubkey.toBase58(),
+            amount,
+            gameId,
+            difficulty,
+          },
         })
       );
 
@@ -120,38 +136,37 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
 
         {/* DIFFICULTY SELECTOR */}
         <div className="modes-selector">
-          {(Object.keys(DIFFICULTY_META) as Array<keyof typeof DIFFICULTY_META>).map(
-            (d) => {
-              const meta = DIFFICULTY_META[d];
-              return (
-                <div
-                  key={d}
-                  className="difficulty-wrapper"
-                  onMouseEnter={() => setHoveredDifficulty(d)}
-                  onMouseLeave={() => setHoveredDifficulty(null)}
+          {(Object.keys(DIFFICULTY_META) as Array<
+            keyof typeof DIFFICULTY_META
+          >).map((d) => {
+            const meta = DIFFICULTY_META[d];
+            return (
+              <div
+                key={d}
+                className="difficulty-wrapper"
+                onMouseEnter={() => setHoveredDifficulty(d)}
+                onMouseLeave={() => setHoveredDifficulty(null)}
+              >
+                <button
+                  onClick={() => notifyDifficultyChange(d)}
+                  className={`mode ${difficulty === d ? "active" : ""}`}
                 >
-                  <button
-                    onClick={() => notifyDifficultyChange(d)}
-                    className={`mode ${difficulty === d ? "active" : ""}`}
-                  >
-                    {meta.label}
-                  </button>
+                  {meta.label}
+                </button>
 
-                  {/* Tooltip */}
-                  {hoveredDifficulty === d && (
-                    <div className="difficulty-tooltip">
-                      <div className="tooltip-multiplier">
-                        {meta.multiplier}x Reward
-                      </div>
-                      <div className="tooltip-details">
-                        {meta.moves} moves • {meta.time}s
-                      </div>
+                {hoveredDifficulty === d && (
+                  <div className="difficulty-tooltip">
+                    <div className="tooltip-multiplier">
+                      {meta.multiplier}x Reward
                     </div>
-                  )}
-                </div>
-              );
-            }
-          )}
+                    <div className="tooltip-details">
+                      {meta.moves} moves • {meta.time}s
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* QUICK OPTIONS */}
@@ -180,11 +195,11 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
         />
 
         <button
-          onClick={handleBid}
+          onClick={() => setShowConfirm(true)}
           disabled={loading || !amount}
           className="place-bid-btn"
         >
-          {loading ? "Processing..." : "Place Bid & Play"}
+          Place Bid & Play
         </button>
 
         <p className="bid-info">
@@ -195,6 +210,74 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       <div className="recent-activity-wrapper max-w-8xl mx-auto">
         <RecentActivity />
       </div>
+
+      {/* CONFIRMATION MODAL */}
+      {showConfirm && amount && (
+        <div className="confirm-overlay">
+          <div className="confirm-modal">
+            <h3 className="confirm-title">Confirm Your Bid</h3>
+
+            <div className="confirm-details">
+              <div className="confirm-row">
+                <span>Bid Amount</span>
+                <span className="value">{amount} SOL</span>
+              </div>
+
+              <div className="confirm-row">
+                <span>Difficulty</span>
+                <span className="value">
+                  {DIFFICULTY_META[difficulty].label}
+                </span>
+              </div>
+
+              <div className="confirm-row">
+                <span>Reward Multiplier</span>
+                <span className="value">
+                  {DIFFICULTY_META[difficulty].multiplier}x
+                </span>
+              </div>
+
+              <div className="confirm-row highlight">
+                <span>Potential Reward</span>
+                <span className="value reward">
+                  {calculateReward(amount, difficulty).toFixed(3)} SOL
+                </span>
+              </div>
+
+              <div className="confirm-row">
+                <span>Moves / Time</span>
+                <span className="value">
+                  {DIFFICULTY_META[difficulty].moves} moves •{" "}
+                  {DIFFICULTY_META[difficulty].time}s
+                </span>
+              </div>
+            </div>
+
+            <div className="confirm-actions">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="btn cancel"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowConfirm(false);
+                  handleBid();
+                }}
+                className="btn confirm"
+              >
+                Confirm & Pay
+              </button>
+            </div>
+
+            <p className="confirm-note">
+              Wallet approval required to complete this transaction
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
