@@ -50,7 +50,6 @@ model GameResult {
   gameId      String    @id @default(cuid())
   userId      Int
   user        User      @relation(fields: [userId], references: [id])
-  moves       Int       @default(0)
   time        Int       @default(0)
   bidding     Decimal   @db.Decimal(18, 9)
   won         Boolean   @default(false)
@@ -74,7 +73,7 @@ model Bid {
   amount        Decimal         @db.Decimal(18, 9)
   status        BidStatus       @default(SUCCESS)
   txSignature   String?
-  network       String?         @default("devnet") // <- added
+  network       String?         @default("devnet")
   transactions  Transaction[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt

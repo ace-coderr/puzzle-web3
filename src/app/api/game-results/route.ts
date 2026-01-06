@@ -4,7 +4,9 @@ import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-// GET — Fetch full game history
+/* =====================================================
+   GET — Fetch full game history
+===================================================== */
 export async function GET(req: NextRequest) {
   try {
     const walletAddress = req.nextUrl.searchParams.get("walletAddress");
@@ -45,13 +47,14 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST — Save game result + auto-create Reward (atomic)
+/* =====================================================
+   POST — Save game result (TIME-ONLY LOGIC)
+===================================================== */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
       walletAddress,
-      moves,
       time,
       bidding,
       won,
@@ -59,20 +62,19 @@ export async function POST(req: NextRequest) {
       difficulty = "medium",
     } = body;
 
-    // Strong validation
+    // --- Validation ---
     if (!walletAddress || typeof walletAddress !== "string")
       return NextResponse.json({ error: "Invalid walletAddress" }, { status: 400 });
+
     if (!gameId || typeof gameId !== "string")
       return NextResponse.json({ error: "Invalid gameId" }, { status: 400 });
 
-    const movesNum = Number(moves);
     const timeNum = Number(time);
     const bidAmount = Number(bidding);
 
-    if (!Number.isInteger(movesNum) || movesNum < 0)
-      return NextResponse.json({ error: "Invalid moves" }, { status: 400 });
-    if (isNaN(timeNum) || timeNum < 0)
+    if (!Number.isInteger(timeNum) || timeNum < 0)
       return NextResponse.json({ error: "Invalid time" }, { status: 400 });
+
     if (isNaN(bidAmount) || bidAmount < 0)
       return NextResponse.json({ error: "Invalid bid amount" }, { status: 400 });
 
@@ -80,11 +82,12 @@ export async function POST(req: NextRequest) {
     if (!validDifficulties.includes(difficulty))
       return NextResponse.json({ error: "Invalid difficulty" }, { status: 400 });
 
-    // Find or create user
+    // --- Find or create user ---
     let user = await prisma.user.findUnique({
       where: { walletAddress },
       select: { id: true },
     });
+
     if (!user) {
       user = await prisma.user.create({
         data: { walletAddress },
@@ -92,17 +95,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Calculate reward
-    const multiplier = difficulty === "easy" ? 1.2 : difficulty === "medium" ? 1.5 : 2.5;
-    const rewardDecimal = won === true ? new Prisma.Decimal(bidAmount * multiplier) : null;
+    // --- Reward calculation ---
+    const multiplier =
+      difficulty === "easy" ? 1.1 :
+        difficulty === "medium" ? 1.5 :
+          3.0;
 
-    // Atomic transaction: save game + create reward
+    const rewardDecimal =
+      won === true
+        ? new Prisma.Decimal(bidAmount * multiplier)
+        : null;
+
+    // --- Atomic transaction ---
     await prisma.$transaction(async (tx) => {
       await tx.gameResult.upsert({
         where: { gameId },
         update: {
-          moves: movesNum,
-          time: timeNum,
+          moves: 0,
           bidding: bidAmount,
           won: Boolean(won),
           reward: rewardDecimal,
@@ -112,7 +121,7 @@ export async function POST(req: NextRequest) {
         create: {
           gameId,
           userId: user.id,
-          moves: movesNum,
+          moves: 0,
           time: timeNum,
           bidding: bidAmount,
           won: Boolean(won),
@@ -128,8 +137,8 @@ export async function POST(req: NextRequest) {
           create: {
             gameResultId: gameId,
             userId: user.id,
-            title: `${difficulty.toUpperCase()} Puzzle Win!`,
-            description: `Won with ${movesNum} moves in ${timeNum}s`,
+            title: `${difficulty.toUpperCase()} Puzzle Win`,
+            description: `Completed in ${timeNum}s`,
             amount: rewardDecimal,
           },
         });
@@ -142,9 +151,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("POST /api/game-results error:", error);
-    if (error instanceof SyntaxError) {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-    }
     return NextResponse.json(
       { error: "Failed to save game result" },
       { status: 500 }

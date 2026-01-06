@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import Modal from "../components/modal";
 import confetti from "canvas-confetti";
-import { useGameSounds } from "@/hooks/useGameSounds"; // Import the sound hook
+import { useGameSounds } from "@/hooks/useGameSounds";
 
 type GameResult = {
   id: string;
@@ -20,7 +20,7 @@ type GameResult = {
 
 export default function RewardPage() {
   const { publicKey } = useWallet();
-  const { playClaim, unlockAudio } = useGameSounds(); // Add sound functions
+  const { playClaim, unlockAudio } = useGameSounds();
 
   const [results, setResults] = useState<GameResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +93,7 @@ export default function RewardPage() {
 
   // Add click sound for claim button
   const handleClaimClick = (gameId: string) => {
-    unlockAudio(); // Ensure audio is unlocked
+    unlockAudio();
     handleClaim(gameId);
   };
 
@@ -182,7 +182,7 @@ function RewardRow({
     <div className={`reward-row ${result.won ? "win" : "lose"}`}>
       <div className="status">{result.won ? "WIN" : "LOSE"}</div>
       <div className="meta">
-        {result.moves} moves • {result.time}s • Bid {result.bidding} SOL
+        {result.time}s • Bid {result.bidding} SOL
       </div>
       <div className="action">{action}</div>
     </div>

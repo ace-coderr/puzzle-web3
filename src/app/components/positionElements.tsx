@@ -112,7 +112,6 @@ export function PositionElements() {
     const [imageUrl, setImageUrl] = useState<string>("/images/preview.jpg");
     const [tiles, setTiles] = useState<Tile[]>([]);
     const [draggedTile, setDraggedTile] = useState<Tile | null>(null);
-    const [moveCount, setMoveCount] = useState<number>(0);
     const [isGameOver, setIsGameOver] = useState<boolean>(false);
     const [isWin, setIsWin] = useState<boolean>(false);
     const [time, setTime] = useState<number>(0);
@@ -145,18 +144,17 @@ export function PositionElements() {
 
     /* ---------- Difficulty ---------- */
     const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
-    const [maxMoves, setMaxMoves] = useState(30);
     const [maxTime, setMaxTime] = useState(90);
     const [rewardMultiplier, setRewardMultiplier] = useState(1.5);
     const difficulties = [
-        { level: "easy" as const, moves: 40, time: 180 },
-        { level: "medium" as const, moves: 30, time: 90 },
-        { level: "hard" as const, moves: 20, time: 60 },
-    ] as const;
+        { level: "easy", time: 180 },
+        { level: "medium", time: 90 },
+        { level: "hard", time: 60 },
+    ];
 
+    // 
     useEffect(() => {
         if (practiceMode) {
-            setMaxMoves(40);
             setMaxTime(180);
             setRewardMultiplier(1.2);
             return;
@@ -164,7 +162,6 @@ export function PositionElements() {
 
         const d = difficulties.find((d) => d.level === difficulty)!;
 
-        setMaxMoves(d.moves);
         setMaxTime(d.time);
         setRewardMultiplier(
             d.level === "easy" ? 1.1 : d.level === "medium" ? 1.5 : 3.0
@@ -220,7 +217,9 @@ export function PositionElements() {
     /* ---------- CHECK WIN/LOSE CONDITIONS ---------- */
     useEffect(() => {
         if (!tiles.length) return;
+
         const won = tiles.every((t) => t.x === t.bgX && t.y === t.bgY);
+
         if (practiceMode) {
             if (won) {
                 setGameActive(false);
@@ -228,7 +227,7 @@ export function PositionElements() {
                 setPracticeType("win");
                 setShowPracticeModal(true);
                 playWin();
-            } else if (moveCount >= maxMoves || time >= maxTime) {
+            } else if (time >= maxTime) {
                 setGameActive(false);
                 setFinalPracticeTime(time);
                 setPracticeType("gameover");
@@ -242,28 +241,30 @@ export function PositionElements() {
                 setIsWin(true);
                 stopEnding();
                 playWin();
+
                 saveResult("WIN", {
                     walletAddress: publicKey?.toString(),
-                    moves: moveCount,
+                    moves: 0,
                     time,
                     bidding: currentBid,
                     difficulty,
                 });
-            } else if (moveCount >= maxMoves || time >= maxTime) {
+            } else if (time >= maxTime) {
                 setIsGameOver(true);
                 setGameActive(false);
                 stopEnding();
                 playLose();
+
                 saveResult("LOSE", {
                     walletAddress: publicKey?.toString(),
-                    moves: moveCount,
+                    moves: 0,
                     time,
                     bidding: currentBid,
                     difficulty,
                 });
             }
         }
-    }, [tiles, moveCount, time, practiceMode, publicKey, currentBid, difficulty]);
+    }, [tiles, time, practiceMode, publicKey, currentBid, difficulty]);
 
     /* ---------- Timer ---------- */
     useEffect(() => {
@@ -309,17 +310,9 @@ export function PositionElements() {
                         : t
             )
         );
-        setMoveCount((c) => {
-            const newMoveCount = c + 1;
-            if (newMoveCount >= maxMoves - 3) {
-                playEnding();
-            }
-            return newMoveCount;
-        });
         if (isCorrectDrop) {
             playPerfect();
         } else {
-            // Play danger sound for wrong move
             playDanger();
             setShowWrongMove(true);
             setTimeout(() => setShowWrongMove(false), 900);
@@ -335,7 +328,6 @@ export function PositionElements() {
         setPracticeMode(false);
         setImageUrl("/images/preview.jpg");
         setTiles(generateTiles("/images/preview.jpg"));
-        setMoveCount(0);
         setTime(0);
         setFinalTime(0);
         setIsWin(false);
@@ -366,7 +358,6 @@ export function PositionElements() {
                 setTiles(generateTiles("/images/preview.jpg"));
             }
             setTime(0);
-            setMoveCount(0);
         },
         [loadPuzzleImage]
     );
@@ -407,12 +398,10 @@ export function PositionElements() {
                         }
                         setPracticeMode(true);
                         setDifficulty("easy");
-                        setMaxMoves(40);
                         setMaxTime(180);
                         setPracticeType("start");
                         setShowPracticeModal(true);
                         loadPuzzleImage(false);
-                        setMoveCount(0);
                         setTime(0);
                         setIsWin(false);
                         setIsGameOver(false);
@@ -428,9 +417,6 @@ export function PositionElements() {
             {/* ----- Counters ----- */}
             {gameActive && (
                 <div className="flex justify-center gap-10 mt-6 text-xl font-semibold text-white time-count">
-                    <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow">
-                        Moves: {moveCount} / {maxMoves}
-                    </p>
                     <p className="bg-gray-900/80 px-4 py-2 rounded-lg shadow">
                         Time: {time}s / {maxTime}s
                     </p>
@@ -534,7 +520,6 @@ export function PositionElements() {
             <PracticeModal
                 show={showPracticeModal}
                 type={practiceType}
-                moves={moveCount}
                 time={finalPracticeTime}
                 onClose={() => {
                     setShowPracticeModal(false);
@@ -581,7 +566,7 @@ export function PositionElements() {
                     </div>
                     <p className="text-2xl text-white mt-12 font-semibold">Your bid is locked.</p>
                     <p className="text-xl text-gray-300 mt-4">
-                        {maxMoves} moves • {maxTime}s • {rewardMultiplier}x reward
+                        {maxTime}s • {rewardMultiplier}x reward
                     </p>
                     <p className="text-lg text-red-400 font-bold mt-10">No refunds. Click when ready.</p>
                 </div>
@@ -611,7 +596,6 @@ export function PositionElements() {
                     <p className="text-5xl font-bold text-emerald-300 -mt-4 mb-10">SOL REWARD</p>
                     <div className="space-y-4 text-white">
                         <p className="font-bold">
-                            Completed in <span className="text-emerald-400">{moveCount}</span> Moves - Time:{" "}
                             <span className="text-emerald-400">{finalTime}s</span>
                         </p>
                     </div>
