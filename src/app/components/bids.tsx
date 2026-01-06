@@ -1,12 +1,6 @@
 "use client";
 import { useState } from "react";
-import {
-  Connection,
-  LAMPORTS_PER_SOL,
-  Transaction,
-  SystemProgram,
-  PublicKey,
-} from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import { toast } from "sonner";
 import RecentActivity from "./recentBids";
@@ -22,38 +16,26 @@ const DIFFICULTY_META = {
   hard: { label: "HARD", multiplier: 3.0, time: 60 },
 } as const;
 
-const TREASURY_WALLET =
-  process.env.NEXT_PUBLIC_TREASURY_WALLET ||
-  "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
+const TREASURY_WALLET = process.env.NEXT_PUBLIC_TREASURY_WALLET || "Ebc5cNzxSe1DTaq6MDPFjzVmj2EUFPvpcVnFGU7jCSpq";
 
-const calculateReward = (
-  amount: number,
-  difficulty: keyof typeof DIFFICULTY_META
-) => amount * DIFFICULTY_META[difficulty].multiplier;
+const calculateReward = (amount: number, difficulty: keyof typeof DIFFICULTY_META) =>
+  amount * DIFFICULTY_META[difficulty].multiplier;
 
-export default function BidComponent({
-  wallet,
-  onBalanceUpdate,
-}: BidComponentProps) {
+export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentProps) {
   const [amount, setAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [difficulty, setDifficulty] =
-    useState<keyof typeof DIFFICULTY_META>("medium");
-  const [hoveredDifficulty, setHoveredDifficulty] =
-    useState<keyof typeof DIFFICULTY_META | null>(null);
+  const [difficulty, setDifficulty] = useState<keyof typeof DIFFICULTY_META>("medium");
+  const [hoveredDifficulty, setHoveredDifficulty] = useState<keyof typeof DIFFICULTY_META | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const rpcUrl =
-    process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
+  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
   const connection = new Connection(rpcUrl, "confirmed");
 
   const quickOptions = [0.1, 0.5, 1, 2];
 
   const notifyDifficultyChange = (d: keyof typeof DIFFICULTY_META) => {
     setDifficulty(d);
-    document.dispatchEvent(
-      new CustomEvent("difficulty-change", { detail: d })
-    );
+    document.dispatchEvent(new CustomEvent("difficulty-change", { detail: d }));
   };
 
   const handleBid = async () => {
@@ -61,41 +43,32 @@ export default function BidComponent({
       toast.warning("Please connect your wallet");
       return;
     }
-
     if (!amount || amount <= 0) {
       toast.error("Enter a valid bid amount");
       return;
     }
 
     setLoading(true);
-    const loadingToast = toast.loading(
-      "Waiting for wallet confirmation..."
-    );
+    const loadingToast = toast.loading("Waiting for wallet confirmation...");
 
     try {
       const fromPubkey = wallet.publicKey;
       const toPubkey = new PublicKey(TREASURY_WALLET);
       const lamports = Math.round(amount * LAMPORTS_PER_SOL);
 
-      const transaction = new Transaction().add(
-        SystemProgram.transfer({ fromPubkey, toPubkey, lamports })
-      );
+      const transaction = new Transaction().add(SystemProgram.transfer({ fromPubkey, toPubkey, lamports }));
 
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = fromPubkey;
 
       const signedTx = await wallet.signTransaction(transaction);
-      const txSignature = await connection.sendRawTransaction(
-        signedTx.serialize()
-      );
-
+      const txSignature = await connection.sendRawTransaction(signedTx.serialize());
       await connection.confirmTransaction(txSignature, "confirmed");
 
-      const gameId = `game-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
+      const gameId = `game-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+      // Record bid in backend
       await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,26 +86,16 @@ export default function BidComponent({
         onBalanceUpdate(balance / LAMPORTS_PER_SOL);
       }
 
-      document.dispatchEvent(new CustomEvent("recent-bid"));
-      document.dispatchEvent(
-        new CustomEvent("puzzle-restart", {
-          detail: {
-            walletAddress: fromPubkey.toBase58(),
-            amount,
-            gameId,
-            difficulty,
-          },
-        })
-      );
+      // Trigger puzzle
+      document.dispatchEvent(new CustomEvent("puzzle-restart", {
+        detail: { walletAddress: fromPubkey.toBase58(), amount, gameId, difficulty }
+      }));
 
-      toast.success(`Bid placed: ${amount} SOL`, {
-        id: loadingToast,
-      });
+      document.dispatchEvent(new CustomEvent("recent-bid"));
+      toast.success(`Bid placed: ${amount} SOL`, { id: loadingToast });
     } catch (err) {
       console.error(err);
-      toast.error("Transaction failed or rejected", {
-        id: loadingToast,
-      });
+      toast.error("Transaction failed or rejected", { id: loadingToast });
     } finally {
       setLoading(false);
     }
@@ -144,11 +107,9 @@ export default function BidComponent({
         <h2 className="play-now">Play Now</h2>
         <hr className="hr" />
 
-        {/* DIFFICULTY SELECTOR */}
+        {/* Difficulty Selector */}
         <div className="modes-selector">
-          {(Object.keys(DIFFICULTY_META) as Array<
-            keyof typeof DIFFICULTY_META
-          >).map((d) => {
+          {(Object.keys(DIFFICULTY_META) as Array<keyof typeof DIFFICULTY_META>).map((d) => {
             const meta = DIFFICULTY_META[d];
             return (
               <div
@@ -163,15 +124,10 @@ export default function BidComponent({
                 >
                   {meta.label}
                 </button>
-
                 {hoveredDifficulty === d && (
                   <div className="difficulty-tooltip">
-                    <div className="tooltip-multiplier">
-                      {meta.multiplier}x Reward
-                    </div>
-                    <div className="tooltip-details">
-                      {meta.time}s time limit
-                    </div>
+                    <div className="tooltip-multiplier">{meta.multiplier}x Reward</div>
+                    <div className="tooltip-details">{meta.time}s time limit</div>
                   </div>
                 )}
               </div>
@@ -179,7 +135,7 @@ export default function BidComponent({
           })}
         </div>
 
-        {/* QUICK OPTIONS */}
+        {/* Quick Options */}
         <div className="quick-options">
           {quickOptions.map((opt) => (
             <button
@@ -193,6 +149,7 @@ export default function BidComponent({
           ))}
         </div>
 
+        {/* Custom Amount */}
         <input
           type="number"
           step="0.001"
@@ -204,6 +161,7 @@ export default function BidComponent({
           className="custom-amount-input"
         />
 
+        {/* Place Bid Button */}
         <button
           onClick={() => setShowConfirm(true)}
           disabled={loading || !amount}
@@ -211,21 +169,21 @@ export default function BidComponent({
         >
           Place Bid & Play
         </button>
-
-        <p className="bid-info">
-          Bids go to treasury • Real SOL • Real wins
-        </p>
+        <p className="bid-info">Bids go to treasury • Real SOL • Real wins</p>
       </div>
 
+      {/* Recent Activity */}
       <div className="recent-activity-wrapper max-w-8xl mx-auto">
         <RecentActivity />
       </div>
 
-      {/* CONFIRMATION MODAL */}
+      {/* Confirmation Modal */}
       {showConfirm && amount && (
         <div className="confirm-overlay">
           <div className="confirm-modal">
-            <h3 className="confirm-title">Confirm Your Bid</h3>
+            <h3 className="confirm-title">
+              Confirm Your Bid
+            </h3>
 
             <div className="confirm-details">
               <div className="confirm-row">
@@ -235,55 +193,36 @@ export default function BidComponent({
 
               <div className="confirm-row">
                 <span>Difficulty</span>
-                <span className="value">
-                  {DIFFICULTY_META[difficulty].label}
-                </span>
+                <span className="value">{DIFFICULTY_META[difficulty].label}</span>
               </div>
 
               <div className="confirm-row">
                 <span>Reward Multiplier</span>
-                <span className="value">
-                  {DIFFICULTY_META[difficulty].multiplier}x
-                </span>
+                <span className="value">{DIFFICULTY_META[difficulty].multiplier}x</span>
               </div>
 
               <div className="confirm-row highlight">
                 <span>Potential Reward</span>
-                <span className="value reward">
-                  {calculateReward(amount, difficulty).toFixed(3)} SOL
-                </span>
+                <span className="value reward">{calculateReward(amount, difficulty).toFixed(3)} SOL</span>
               </div>
 
               <div className="confirm-row">
                 <span>Moves / Time</span>
-                <span className="value">
-                  {DIFFICULTY_META[difficulty].time}s
-                </span>
+                <span className="value">{DIFFICULTY_META[difficulty].time}s</span>
               </div>
             </div>
 
             <div className="confirm-actions">
+              <button onClick={() => setShowConfirm(false)} className="btn cancel">Cancel</button>
               <button
-                onClick={() => setShowConfirm(false)}
-                className="btn cancel"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowConfirm(false);
-                  handleBid();
-                }}
+                onClick={() => { setShowConfirm(false); handleBid(); }}
                 className="btn confirm"
               >
                 Confirm & Pay
               </button>
             </div>
 
-            <p className="confirm-note">
-              Wallet approval required to complete this transaction
-            </p>
+            <p className="confirm-note">Wallet approval required to complete this transaction</p>
           </div>
         </div>
       )}

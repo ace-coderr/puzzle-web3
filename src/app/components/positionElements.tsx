@@ -168,23 +168,39 @@ export function PositionElements() {
         );
     }, [difficulty, practiceMode]);
 
-    /* ---------- Tile generation ---------- */
-    function generateTiles(imageUrl: string): Tile[] {
+    /* ---------- PREVIEW TILE INIT ---------- */
+    useEffect(() => {
+        if (!gameActive && !practiceMode) {
+            setTiles(generateTiles());
+        }
+    }, [difficulty, gameActive, practiceMode]);
+
+    /* --------------- Tile generation ----------------- */
+    function generateTiles(): Tile[] {
         const { cols, rows } = GRID_CONFIG[difficulty];
+
         const tileW = 40 / cols;
         const tileH = 24 / rows;
-        const leftPositions = Array.from({ length: cols }, (_, i) => i * tileW);
-        const topPositions = Array.from({ length: rows }, (_, i) => i * tileH);
-        const bgPositions: [number, number][] = [];
-        for (let y of topPositions) {
-            for (let x of leftPositions) {
-                bgPositions.push([x, y]);
+
+        const positions: [number, number][] = [];
+
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                positions.push([col * tileW, row * tileH]);
             }
         }
-        const shuffled = shuffleArray(bgPositions);
-        return bgPositions.map(([bgX, bgY], i) => {
+
+        const shuffled = shuffleArray(positions);
+
+        return positions.map(([bgX, bgY], i) => {
             const [x, y] = shuffled[i];
-            return { id: i, x, y, bgX, bgY };
+            return {
+                id: i,
+                x,
+                y,
+                bgX,
+                bgY,
+            };
         });
     }
 
@@ -209,7 +225,7 @@ export function PositionElements() {
         img.src = url;
         img.onload = () => {
             setImageUrl(url);
-            setTiles(generateTiles(url));
+            setTiles(generateTiles());
             if (showModal) setShowStartModal(true);
         };
     };
@@ -327,7 +343,7 @@ export function PositionElements() {
         setShowStartModal(false);
         setPracticeMode(false);
         setImageUrl("/images/preview.jpg");
-        setTiles(generateTiles("/images/preview.jpg"));
+        setTiles(generateTiles());
         setTime(0);
         setFinalTime(0);
         setIsWin(false);
@@ -355,7 +371,7 @@ export function PositionElements() {
                 loadPuzzleImage(true);
             } else {
                 setImageUrl("/images/preview.jpg");
-                setTiles(generateTiles("/images/preview.jpg"));
+                setTiles(generateTiles());
             }
             setTime(0);
         },
@@ -435,7 +451,7 @@ export function PositionElements() {
 
                             /* ---------- PREVIEW MODE ---------- */
                             if (!gameActive && !practiceMode) {
-                                return generateTiles("/images/preview.jpg").map((tile) => (
+                                return tiles.map((tile) => (
                                     <div
                                         key={tile.id}
                                         className="absolute box-border opacity-80"
@@ -448,7 +464,6 @@ export function PositionElements() {
                                             backgroundPosition: `-${tile.bgX}vw -${tile.bgY}vw`,
                                             backgroundSize: `40vw 24vw`,
                                             backgroundRepeat: "no-repeat",
-                                            filter: "brightness(0.85)",
                                         }}
                                     />
                                 ));
