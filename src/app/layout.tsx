@@ -67,7 +67,7 @@ export default function RootLayout({
         {/* ===== SONNER GLOBAL TOASTER ===== */}
         <Toaster
           theme="dark"
-          position="top-right"
+          position="top-center"
           richColors
           closeButton
           toastOptions={{
