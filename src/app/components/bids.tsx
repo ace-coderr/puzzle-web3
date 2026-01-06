@@ -8,6 +8,7 @@ import {
   PublicKey,
 } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
+import { toast } from "sonner";
 import RecentActivity from "./recentBids";
 
 type BidComponentProps = {
@@ -57,15 +58,20 @@ export default function BidComponent({
 
   const handleBid = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) {
-      alert("Please connect your wallet!");
+      toast.warning("Please connect your wallet");
       return;
     }
+
     if (!amount || amount <= 0) {
-      alert("Enter a valid bid amount.");
+      toast.error("Enter a valid bid amount");
       return;
     }
 
     setLoading(true);
+    const loadingToast = toast.loading(
+      "Waiting for wallet confirmation..."
+    );
+
     try {
       const fromPubkey = wallet.publicKey;
       const toPubkey = new PublicKey(TREASURY_WALLET);
@@ -119,10 +125,14 @@ export default function BidComponent({
         })
       );
 
-      alert(`Success! ${amount} SOL bid placed.`);
+      toast.success(`Bid placed: ${amount} SOL`, {
+        id: loadingToast,
+      });
     } catch (err) {
       console.error(err);
-      alert("Transaction failed.");
+      toast.error("Transaction failed or rejected", {
+        id: loadingToast,
+      });
     } finally {
       setLoading(false);
     }

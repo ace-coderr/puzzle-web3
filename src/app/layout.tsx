@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 import { AppWalletProvider } from "./components/appWalletProvider";
@@ -55,7 +56,7 @@ export default function RootLayout({
           min-h-screen
         `}
       >
-        {/* PROVIDERS */}
+        {/* ===== APP PROVIDERS ===== */}
         <SoundProvider>
           <AppWalletProvider>
             <Navbar />
@@ -63,9 +64,23 @@ export default function RootLayout({
             <main className="min-h-screen page-content">
               {children}
             </main>
-
           </AppWalletProvider>
         </SoundProvider>
+
+        {/* ===== SONNER GLOBAL TOASTER ===== */}
+        <Toaster
+          theme="dark"
+          position="top-right"
+          richColors
+          closeButton
+          toastOptions={{
+            style: {
+              background: "#0e0e0e",
+              border: "1px solid #2a2a2a",
+              color: "#ffffff",
+            },
+          }}
+        />
       </body>
     </html>
   );
