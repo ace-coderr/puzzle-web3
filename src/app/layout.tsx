@@ -6,7 +6,6 @@ import "./globals.css";
 
 import { AppWalletProvider } from "./components/appWalletProvider";
 import { Navbar } from "./components/navbar";
-import { SoundProvider } from "./components/context/soundProvider";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -57,7 +56,6 @@ export default function RootLayout({
         `}
       >
         {/* ===== APP PROVIDERS ===== */}
-        <SoundProvider>
           <AppWalletProvider>
             <Navbar />
 
@@ -65,7 +63,6 @@ export default function RootLayout({
               {children}
             </main>
           </AppWalletProvider>
-        </SoundProvider>
 
         {/* ===== SONNER GLOBAL TOASTER ===== */}
         <Toaster
