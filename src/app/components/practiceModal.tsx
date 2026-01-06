@@ -7,7 +7,6 @@ interface PracticeModalProps {
     onClose: () => void;
     onConfirm?: () => void;
     type: "start" | "win" | "gameover";
-    moves?: number;
     time?: number;
 }
 
@@ -16,7 +15,6 @@ export default function PracticeModal({
     onClose,
     onConfirm,
     type,
-    moves,
     time,
 }: PracticeModalProps) {
     const config = {
@@ -48,11 +46,6 @@ export default function PracticeModal({
             confirmText: "Continue",
             content: (
                 <div className="confirm-details">
-                    <div className="confirm-row">
-                        <span>Moves</span>
-                        <span className="value">{moves}</span>
-                    </div>
-
                     <div className="confirm-row highlight">
                         <span>Time</span>
                         <span className="reward">{time}s</span>

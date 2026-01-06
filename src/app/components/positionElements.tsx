@@ -89,6 +89,8 @@ const GRID_CONFIG = {
     hard: { cols: 10, rows: 4 },
 } as const;
 
+type Difficulty = keyof typeof GRID_CONFIG;
+
 /* -------------------------------------------------------------
    MAIN COMPONENT
    ------------------------------------------------------------- */
@@ -168,16 +170,12 @@ export function PositionElements() {
         );
     }, [difficulty, practiceMode]);
 
-    /* ---------- PREVIEW TILE INIT ---------- */
-    useEffect(() => {
-        if (!gameActive && !practiceMode) {
-            setTiles(generateTiles());
-        }
-    }, [difficulty, gameActive, practiceMode]);
+    /* ---------- SINGLE SOURCE OF TRUTH ---------- */
+    const effectiveDifficulty: Difficulty = practiceMode ? "easy" : difficulty;
 
     /* --------------- Tile generation ----------------- */
     function generateTiles(): Tile[] {
-        const { cols, rows } = GRID_CONFIG[difficulty];
+        const { cols, rows } = GRID_CONFIG[effectiveDifficulty];
 
         const tileW = 40 / cols;
         const tileH = 24 / rows;
@@ -194,15 +192,16 @@ export function PositionElements() {
 
         return positions.map(([bgX, bgY], i) => {
             const [x, y] = shuffled[i];
-            return {
-                id: i,
-                x,
-                y,
-                bgX,
-                bgY,
-            };
+            return { id: i, x, y, bgX, bgY };
         });
     }
+
+    /* ---------- PREVIEW TILE INIT ---------- */
+    useEffect(() => {
+        if (!gameActive) {
+            setTiles(generateTiles());
+        }
+    }, [effectiveDifficulty, gameActive]);
 
     /* ---------------------- IMAGE & TILE LOADER ---------------------- */
     const loadPuzzleImage = (showModal: boolean = false) => {
@@ -225,7 +224,6 @@ export function PositionElements() {
         img.src = url;
         img.onload = () => {
             setImageUrl(url);
-            setTiles(generateTiles());
             if (showModal) setShowStartModal(true);
         };
     };
@@ -343,7 +341,6 @@ export function PositionElements() {
         setShowStartModal(false);
         setPracticeMode(false);
         setImageUrl("/images/preview.jpg");
-        setTiles(generateTiles());
         setTime(0);
         setFinalTime(0);
         setIsWin(false);
@@ -371,7 +368,6 @@ export function PositionElements() {
                 loadPuzzleImage(true);
             } else {
                 setImageUrl("/images/preview.jpg");
-                setTiles(generateTiles());
             }
             setTime(0);
         },
@@ -412,17 +408,17 @@ export function PositionElements() {
                             setShowGameActiveWarning(true);
                             return;
                         }
+                        playClick();
                         setPracticeMode(true);
                         setDifficulty("easy");
                         setMaxTime(180);
                         setPracticeType("start");
                         setShowPracticeModal(true);
-                        loadPuzzleImage(false);
                         setTime(0);
                         setIsWin(false);
                         setIsGameOver(false);
                         setGameActive(false);
-                        playClick();
+                        loadPuzzleImage(false);
                     }}
                     className="practice-mode1"
                 >
@@ -445,7 +441,7 @@ export function PositionElements() {
                     <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
                     <div className="relative w-[40vw] h-[24vw] rounded-xl overflow-hidden bg-black/40 border border-white/10">
                         {(() => {
-                            const { cols, rows } = GRID_CONFIG[difficulty];
+                            const { cols, rows } = GRID_CONFIG[effectiveDifficulty];
                             const tileW = 40 / cols;
                             const tileH = 24 / rows;
 
@@ -532,7 +528,7 @@ export function PositionElements() {
 
             {/* ---------- MODALS ---------- */}
 
-            {/* PRACTICE MODAL (already correct) */}
+            {/* PRACTICE MODAL */}
             <PracticeModal
                 show={showPracticeModal}
                 type={practiceType}
@@ -711,7 +707,7 @@ export function PositionElements() {
             >
                 <div className="confirm-details">
                     <div className="confirm-row">
-                        <span>Out of moves or time!</span>
+                        <span>Out of time!</span>
                     </div>
                 </div>
 
