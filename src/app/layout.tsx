@@ -56,13 +56,13 @@ export default function RootLayout({
         `}
       >
         {/* ===== APP PROVIDERS ===== */}
-          <AppWalletProvider>
-            <Navbar />
+        <AppWalletProvider>
+          <Navbar />
 
-            <main className="min-h-screen page-content">
-              {children}
-            </main>
-          </AppWalletProvider>
+          <main className="min-h-screen page-content">
+            {children}
+          </main>
+        </AppWalletProvider>
 
         {/* ===== SONNER GLOBAL TOASTER ===== */}
         <Toaster
