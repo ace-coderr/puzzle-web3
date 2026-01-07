@@ -1,5 +1,11 @@
 -- CreateEnum
-CREATE TYPE "public"."TransactionType" AS ENUM ('DEPOSIT', 'WITHDRAWAL', 'BID', 'WIN', 'LOSE', 'REWARD');
+CREATE TYPE "public"."Difficulty" AS ENUM ('easy', 'medium', 'hard');
+
+-- CreateEnum
+CREATE TYPE "public"."BidStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "public"."TransactionType" AS ENUM ('BID', 'REWARD');
 
 -- CreateEnum
 CREATE TYPE "public"."TransactionStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED');
@@ -7,9 +13,8 @@ CREATE TYPE "public"."TransactionStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED'
 -- CreateTable
 CREATE TABLE "public"."User" (
     "id" SERIAL NOT NULL,
-    "customId" TEXT NOT NULL,
     "walletAddress" TEXT NOT NULL,
-    "balance" DECIMAL(18,8) NOT NULL DEFAULT 0.0,
+    "balance" DECIMAL(18,9) NOT NULL DEFAULT 0.0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -20,12 +25,11 @@ CREATE TABLE "public"."User" (
 CREATE TABLE "public"."GameResult" (
     "gameId" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
-    "moves" INTEGER NOT NULL DEFAULT 0,
-    "score" INTEGER NOT NULL DEFAULT 0,
-    "bidding" DECIMAL(18,8) NOT NULL,
+    "time" INTEGER NOT NULL DEFAULT 0,
+    "bidding" DECIMAL(18,9) NOT NULL,
     "won" BOOLEAN NOT NULL DEFAULT false,
-    "difficulty" TEXT NOT NULL DEFAULT 'medium',
-    "reward" DECIMAL(18,8),
+    "difficulty" "public"."Difficulty" NOT NULL DEFAULT 'medium',
+    "reward" DECIMAL(18,9),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -37,9 +41,10 @@ CREATE TABLE "public"."Bid" (
     "id" TEXT NOT NULL,
     "gameResultId" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
-    "amount" DECIMAL(18,8) NOT NULL,
-    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "amount" DECIMAL(18,9) NOT NULL,
+    "status" "public"."BidStatus" NOT NULL DEFAULT 'PENDING',
     "txSignature" TEXT,
+    "network" TEXT DEFAULT 'devnet',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -53,7 +58,7 @@ CREATE TABLE "public"."Reward" (
     "userId" INTEGER NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
-    "amount" DECIMAL(18,8) NOT NULL,
+    "amount" DECIMAL(18,9) NOT NULL,
     "claimed" BOOLEAN NOT NULL DEFAULT false,
     "claimedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -66,12 +71,11 @@ CREATE TABLE "public"."Transaction" (
     "id" SERIAL NOT NULL,
     "userId" INTEGER NOT NULL,
     "bidId" TEXT,
-    "amount" DECIMAL(65,30) NOT NULL,
-    "type" TEXT NOT NULL,
-    "status" TEXT NOT NULL,
+    "amount" DECIMAL(18,9) NOT NULL,
+    "type" "public"."TransactionType" NOT NULL,
+    "status" "public"."TransactionStatus" NOT NULL DEFAULT 'PENDING',
     "txSignature" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Transaction_pkey" PRIMARY KEY ("id")
 );
@@ -89,9 +93,6 @@ CREATE INDEX "GameResult_userId_idx" ON "public"."GameResult"("userId");
 CREATE INDEX "GameResult_createdAt_idx" ON "public"."GameResult"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "GameResult_won_idx" ON "public"."GameResult"("won");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Bid_gameResultId_key" ON "public"."Bid"("gameResultId");
 
 -- CreateIndex
@@ -101,19 +102,22 @@ CREATE INDEX "Bid_gameResultId_idx" ON "public"."Bid"("gameResultId");
 CREATE INDEX "Bid_userId_idx" ON "public"."Bid"("userId");
 
 -- CreateIndex
-CREATE INDEX "Bid_createdAt_idx" ON "public"."Bid"("createdAt");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Reward_gameResultId_key" ON "public"."Reward"("gameResultId");
 
 -- CreateIndex
 CREATE INDEX "Reward_gameResultId_idx" ON "public"."Reward"("gameResultId");
 
 -- CreateIndex
-CREATE INDEX "Reward_userId_idx" ON "public"."Reward"("userId");
+CREATE INDEX "Reward_userId_claimed_idx" ON "public"."Reward"("userId", "claimed");
 
 -- CreateIndex
-CREATE INDEX "Reward_claimed_idx" ON "public"."Reward"("claimed");
+CREATE UNIQUE INDEX "Transaction_txSignature_key" ON "public"."Transaction"("txSignature");
+
+-- CreateIndex
+CREATE INDEX "Transaction_userId_idx" ON "public"."Transaction"("userId");
+
+-- CreateIndex
+CREATE INDEX "Transaction_bidId_idx" ON "public"."Transaction"("bidId");
 
 -- AddForeignKey
 ALTER TABLE "public"."GameResult" ADD CONSTRAINT "GameResult_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
