@@ -8,7 +8,6 @@ import {
     Transaction,
     LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-import { Decimal } from "@prisma/client/runtime/library";
 
 // ──────────────────────────────────────────────────
 // CONFIG
