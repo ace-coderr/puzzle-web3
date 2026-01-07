@@ -97,12 +97,9 @@ type Difficulty = keyof typeof GRID_CONFIG;
 export function PositionElements() {
     const { publicKey } = useWallet();
     const router = useRouter();
-
     const {
         playWin,
         playLose,
-        playPerfect,
-        playDanger,
         playEnding,
         stopEnding,
         stopAll,
@@ -123,7 +120,6 @@ export function PositionElements() {
     const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [gameActive, setGameActive] = useState(false);
     const [finalTime, setFinalTime] = useState<number>(0);
-    const [showWrongMove, setShowWrongMove] = useState(false);
     const [availableSeeds, setAvailableSeeds] = useState<number[]>([]);
 
     // Practice Mode
@@ -314,7 +310,6 @@ export function PositionElements() {
         e.preventDefault();
         if (!gameActive || !draggedTile) return;
 
-        const isCorrectDrop = draggedTile.bgX === target.x && draggedTile.bgY === target.y;
         setTiles((tiles) =>
             tiles.map((t) =>
                 t.id === draggedTile.id
@@ -324,13 +319,7 @@ export function PositionElements() {
                         : t
             )
         );
-        if (isCorrectDrop) {
-            playPerfect();
-        } else {
-            playDanger();
-            setShowWrongMove(true);
-            setTimeout(() => setShowWrongMove(false), 900);
-        }
+
         setDraggedTile(null);
     };
 
@@ -499,15 +488,6 @@ export function PositionElements() {
                             ));
                         })()}
                     </div>
-
-                    {/* WRONG MOVE INDICATOR */}
-                    {showWrongMove && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50">
-                            <span className="text-red-400 text-6xl font-black animate-float-fade drop-shadow-[0_0_20px_rgba(248,113,113,0.8)]">
-                                -1
-                            </span>
-                        </div>
-                    )}
                 </div>
 
                 {/* ================== CENTER ARROW ================== */}

@@ -122,8 +122,6 @@ export const useGameSounds = () => {
         stopAll,
         playWin: () => playEffect("/sounds/win.mp3"),
         playLose: () => playEffect("/sounds/lose.mp3"),
-        playPerfect: () => playEffect("/sounds/perfect.mp3"),
-        playDanger: () => playEffect("/sounds/tick.mp3", 0.5),
         playClick: () => playEffect("/sounds/tick.mp3", 0.3, 1.5),
         playClaim: () => playEffect("/sounds/claim.mp3", 0.8),
     };
