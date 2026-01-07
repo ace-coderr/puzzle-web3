@@ -70,65 +70,76 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { walletAddress, amount, gameId, txSignature, difficulty } = await req.json();
+
     if (!walletAddress || !amount || !gameId || !txSignature) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
     // Verify tx signature on Devnet
-    if (!(await verifyTxSignature(txSignature, walletAddress, amount))) {
+    const isValid = await verifyTxSignature(txSignature, walletAddress, amount);
+    if (!isValid) {
       return NextResponse.json({ error: "Invalid transaction" }, { status: 400 });
     }
 
-    // Upsert user
-    const user = await prisma.user.upsert({
-      where: { walletAddress },
-      update: {},
-      create: { walletAddress },
+    const result = await prisma.$transaction(async (tx) => {
+      // Upsert user
+      const user = await tx.user.upsert({
+        where: { walletAddress },
+        update: {},
+        create: { walletAddress },
+      });
+
+      // Create game result
+      const gameResult = await tx.gameResult.create({
+        data: {
+          gameId,
+          userId: user.id,
+          bidding: new Decimal(amount),
+          difficulty,
+        },
+        select: { gameId: true },
+      });
+
+      // Create bid
+      const bid = await tx.bid.create({
+        data: {
+          gameResultId: gameResult.gameId,
+          userId: user.id,
+          amount: new Decimal(amount),
+          status: "SUCCESS",
+          txSignature,
+          network: "devnet",
+        },
+      });
+
+      // Decrease balance
+      await tx.user.update({
+        where: { id: user.id },
+        data: { balance: { decrement: new Decimal(amount) } },
+      });
+
+      // Log transaction
+      await tx.transaction.create({
+        data: {
+          userId: user.id,
+          bidId: bid.id,
+          amount: new Decimal(amount),
+          type: "BID",
+          status: "SUCCESS",
+          txSignature,
+        },
+      });
+
+      return bid;
     });
 
-    // Create game result
-    const gameResult = await prisma.gameResult.create({
-      data: {
-        gameId,
-        userId: user.id,
-        bidding: new Decimal(amount),
-        difficulty: difficulty || "medium",
-      },
-    });
+    return NextResponse.json({ success: true, bid: result });
 
-    // Create bid
-    const bid = await prisma.bid.create({
-      data: {
-        gameResultId: gameResult.gameId,
-        userId: user.id,
-        amount: new Decimal(amount),
-        status: "SUCCESS",
-        txSignature,
-        network: "devnet",
-      },
-    });
-
-    // Decrease balance
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { balance: { decrement: new Decimal(amount) } },
-    });
-
-    // Log transaction
-    await prisma.transaction.create({
-      data: {
-        userId: user.id,
-        bidId: bid.id,
-        amount: new Decimal(amount),
-        type: "BID",
-        status: "SUCCESS",
-        txSignature,
-      },
-    });
-
-    return NextResponse.json({ success: true, bid });
   } catch (error: any) {
     console.error("POST /api/bids failed:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message ?? "Server error" },
+      { status: 500 }
+    );
   }
 }

@@ -71,7 +71,7 @@ model Bid {
   userId        Int
   user          User            @relation(fields: [userId], references: [id])
   amount        Decimal         @db.Decimal(18, 9)
-  status        BidStatus       @default(SUCCESS)
+  status        BidStatus       @default(PENDING)
   txSignature   String?
   network       String?         @default("devnet")
   transactions  Transaction[]
@@ -108,7 +108,7 @@ model Transaction {
   amount      Decimal          @db.Decimal(18, 9)
   type        TransactionType
   status      TransactionStatus @default(PENDING)
-  txSignature String?
+  txSignature String? @unique
   createdAt   DateTime         @default(now())
 
   @@index([userId])
