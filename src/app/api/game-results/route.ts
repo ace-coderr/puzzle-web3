@@ -28,7 +28,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       results: results.map((r) => ({
         id: r.gameId,
-        moves: r.moves,
         time: r.time,
         bidding: Number(r.bidding),
         reward: r.reward ? Number(r.reward) : null,

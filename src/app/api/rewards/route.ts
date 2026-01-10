@@ -8,21 +8,44 @@ import {
     Transaction,
     LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
+import crypto from "crypto";
 
 // ──────────────────────────────────────────────────
 // CONFIG
 // ──────────────────────────────────────────────────
-const REWARD_WALLET_SECRET = process.env.REWARD_WALLET_SECRET_KEY
-    ? Uint8Array.from(JSON.parse(process.env.REWARD_WALLET_SECRET_KEY))
-    : null;
 
-if (!REWARD_WALLET_SECRET) {
-    throw new Error("REWARD_WALLET_SECRET_KEY missing in .env");
+if (!process.env.REWARD_WALLET_SECRET_ENCRYPTED) {
+    throw new Error("REWARD_WALLET_SECRET_ENCRYPTED missing in .env");
+}
+
+if (!process.env.WALLET_ENCRYPTION_KEY) {
+    throw new Error("WALLET_ENCRYPTION_KEY missing in .env");
+}
+
+function decryptRewardWallet(): Uint8Array {
+    const encrypted = JSON.parse(process.env.REWARD_WALLET_SECRET_ENCRYPTED!);
+
+    const key = Buffer.from(process.env.WALLET_ENCRYPTION_KEY!, "hex");
+
+    const decipher = crypto.createDecipheriv(
+        "aes-256-gcm",
+        key,
+        Buffer.from(encrypted.iv, "hex")
+    );
+
+    decipher.setAuthTag(Buffer.from(encrypted.tag, "hex"));
+
+    const decrypted = Buffer.concat([
+        decipher.update(Buffer.from(encrypted.data, "hex")),
+        decipher.final(),
+    ]);
+
+    return new Uint8Array(decrypted);
 }
 
 const RPC_URL = process.env.RPC_URL || "https://api.devnet.solana.com";
 const connection = new Connection(RPC_URL, "confirmed");
-const rewardKeypair = Keypair.fromSecretKey(REWARD_WALLET_SECRET);
+const rewardKeypair = Keypair.fromSecretKey(decryptRewardWallet());
 
 export const dynamic = "force-dynamic";
 
