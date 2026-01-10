@@ -59,6 +59,15 @@ export function Navbar() {
 
     let active = true;
 
+       fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: publicKey.toBase58(),
+
+        }),
+      });
+
     const fetchBalance = async () => {
       const sol = await getUserSOLBalance(publicKey.toBase58());
       if (active) setBalance(sol);
