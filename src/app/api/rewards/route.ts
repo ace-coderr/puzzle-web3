@@ -11,7 +11,7 @@ import {
 import crypto from "crypto";
 
 /* ──────────────────────────────────────────────
-   ENV VALIDATION (safe at build time)
+   ENV VALIDATION
 ────────────────────────────────────────────── */
 
 if (!process.env.REWARD_WALLET_SECRET_ENCRYPTED) {
@@ -25,7 +25,7 @@ if (!process.env.WALLET_ENCRYPTION_KEY) {
 const RPC_URL = process.env.RPC_URL ?? "https://api.devnet.solana.com";
 
 /* ──────────────────────────────────────────────
-   DECRYPT SOLANA REWARD WALLET (runtime only)
+   DECRYPT SOLANA REWARD WALLET
 ────────────────────────────────────────────── */
 
 function decryptRewardWallet(): Uint8Array {
