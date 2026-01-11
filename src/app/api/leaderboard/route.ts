@@ -53,7 +53,7 @@ export async function GET() {
             }
         });
 
-        let displayedLeaderboard = leaderboard.slice(0, 50);
+        const displayedLeaderboard = leaderboard.slice(0, 50);
         if (myRank && myRank.rank > 50) {
             displayedLeaderboard.push(myRank);
         }

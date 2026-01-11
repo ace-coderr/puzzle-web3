@@ -110,7 +110,6 @@ export async function POST(req: NextRequest) {
       await tx.gameResult.upsert({
         where: { gameId },
         update: {
-          moves: 0,
           bidding: bidAmount,
           won: Boolean(won),
           reward: rewardDecimal,
@@ -120,7 +119,6 @@ export async function POST(req: NextRequest) {
         create: {
           gameId,
           userId: user.id,
-          moves: 0,
           time: timeNum,
           bidding: bidAmount,
           won: Boolean(won),

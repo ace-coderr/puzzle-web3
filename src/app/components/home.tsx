@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-// @ts-ignore
 import "./css/style.css";
 import { PositionElements } from "./positionElements";
 import BidComponent from "./bids";

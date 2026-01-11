@@ -14,18 +14,18 @@ import crypto from "crypto";
 // CONFIG
 // ──────────────────────────────────────────────────
 
-if (!process.env.REWARD_WALLET_SECRET_ENCRYPTED) {
+if (!process.env.NEXT_PUBLIC_REWARD_WALLET_SECRET_ENCRYPTED) {
     throw new Error("REWARD_WALLET_SECRET_ENCRYPTED missing in .env");
 }
 
-if (!process.env.WALLET_ENCRYPTION_KEY) {
+if (!process.env.NEXT_PUBLIC_WALLET_ENCRYPTION_KEY) {
     throw new Error("WALLET_ENCRYPTION_KEY missing in .env");
 }
 
 function decryptRewardWallet(): Uint8Array {
-    const encrypted = JSON.parse(process.env.REWARD_WALLET_SECRET_ENCRYPTED!);
+    const encrypted = JSON.parse(process.env.NEXT_PUBLIC_REWARD_WALLET_SECRET_ENCRYPTED!);
 
-    const key = Buffer.from(process.env.WALLET_ENCRYPTION_KEY!, "hex");
+    const key = Buffer.from(process.env.NEXT_PUBLIC_WALLET_ENCRYPTION_KEY!, "hex");
 
     const decipher = crypto.createDecipheriv(
         "aes-256-gcm",
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
             try {
                 blockhashResponse = await connection.getLatestBlockhash();
                 break;
-            } catch (err) {
+            } catch  {
                 if (i === 4) throw new Error("RPC unreachable — cannot get blockhash");
                 await new Promise((r) => setTimeout(r, 1000));
             }

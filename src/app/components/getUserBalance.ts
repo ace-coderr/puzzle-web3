@@ -25,7 +25,7 @@ export async function getUserSOLBalance(pubKey: string): Promise<number> {
                 const lamports = await connection.getBalance(publicKey);
                 console.log(`Balance from [${i + 1}]: ${endpoint}`);
                 return lamports / 1e9;
-            } catch (err) {
+            } catch {
                 console.warn(`RPC ${i + 1} failed: ${endpoint}`);
             }
         }
