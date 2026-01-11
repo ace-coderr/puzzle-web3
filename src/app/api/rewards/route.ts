@@ -10,22 +10,37 @@ import {
 } from "@solana/web3.js";
 import crypto from "crypto";
 
-// ──────────────────────────────────────────────────
-// CONFIG
-// ──────────────────────────────────────────────────
+/* ──────────────────────────────────────────────
+   ENV VALIDATION (safe at build time)
+────────────────────────────────────────────── */
 
-if (!process.env.NEXT_PUBLIC_REWARD_WALLET_SECRET_ENCRYPTED) {
-    throw new Error("REWARD_WALLET_SECRET_ENCRYPTED missing in .env");
+if (!process.env.REWARD_WALLET_SECRET_ENCRYPTED) {
+    throw new Error("REWARD_WALLET_SECRET_ENCRYPTED missing");
 }
 
-if (!process.env.NEXT_PUBLIC_WALLET_ENCRYPTION_KEY) {
-    throw new Error("WALLET_ENCRYPTION_KEY missing in .env");
+if (!process.env.WALLET_ENCRYPTION_KEY) {
+    throw new Error("WALLET_ENCRYPTION_KEY missing");
 }
+
+const RPC_URL = process.env.RPC_URL ?? "https://api.devnet.solana.com";
+
+/* ──────────────────────────────────────────────
+   DECRYPT SOLANA REWARD WALLET (runtime only)
+────────────────────────────────────────────── */
 
 function decryptRewardWallet(): Uint8Array {
-    const encrypted = JSON.parse(process.env.NEXT_PUBLIC_REWARD_WALLET_SECRET_ENCRYPTED!);
+    const encrypted = JSON.parse(
+        process.env.REWARD_WALLET_SECRET_ENCRYPTED!
+    );
 
-    const key = Buffer.from(process.env.NEXT_PUBLIC_WALLET_ENCRYPTION_KEY!, "hex");
+    const key = Buffer.from(
+        process.env.WALLET_ENCRYPTION_KEY!,
+        "hex"
+    );
+
+    if (key.length !== 32) {
+        throw new Error("Invalid AES-256 key length");
+    }
 
     const decipher = crypto.createDecipheriv(
         "aes-256-gcm",
@@ -40,18 +55,34 @@ function decryptRewardWallet(): Uint8Array {
         decipher.final(),
     ]);
 
+    if (decrypted.length !== 64) {
+        throw new Error("Invalid Solana secret key length");
+    }
+
     return new Uint8Array(decrypted);
 }
 
-const RPC_URL = process.env.RPC_URL || "https://api.devnet.solana.com";
+function getRewardKeypair(): Keypair {
+    return Keypair.fromSecretKey(decryptRewardWallet());
+}
+
+/* ──────────────────────────────────────────────
+   SOLANA CONNECTION (safe)
+────────────────────────────────────────────── */
+
 const connection = new Connection(RPC_URL, "confirmed");
-const rewardKeypair = Keypair.fromSecretKey(decryptRewardWallet());
+
+/* ──────────────────────────────────────────────
+   NEXT CONFIG
+────────────────────────────────────────────── */
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
-    let txSignature: string;
+/* ──────────────────────────────────────────────
+   POST /api/rewards
+────────────────────────────────────────────── */
 
+export async function POST(req: Request) {
     try {
         const { gameId, walletAddress } = await req.json();
 
@@ -62,46 +93,49 @@ export async function POST(req: Request) {
             );
         }
 
-        // 1. Atomic check + mark claimed
+        /* ───── 1. Atomic claim lock ───── */
+
         const claim = await prisma.$transaction(async (tx) => {
             const game = await tx.gameResult.findUnique({
                 where: { gameId },
                 include: { rewardEntry: true },
             });
 
-            if (!game) throw new Error("Game not found");
-            if (!game.won) throw new Error("You didn't win this game");
-            if (!game.reward) throw new Error("No reward");
-            if (game.rewardEntry?.claimed) throw new Error("Already claimed");
+            if (!game) throw new Error("GAME_NOT_FOUND");
+            if (!game.won) throw new Error("NOT_WINNER");
+            if (!game.reward) throw new Error("NO_REWARD");
+            if (game.rewardEntry?.claimed) throw new Error("ALREADY_CLAIMED");
 
             await tx.reward.update({
                 where: { gameResultId: gameId },
                 data: { claimed: true, claimedAt: new Date() },
             });
 
-            return { amount: game.reward, userId: game.userId };
+            return {
+                amount: Number(game.reward),
+                userId: game.userId,
+            };
         });
 
-        // 2. Get blockhash SAFELY
-        let blockhashResponse;
-        for (let i = 0; i < 5; i++) {
-            try {
-                blockhashResponse = await connection.getLatestBlockhash();
-                break;
-            } catch  {
-                if (i === 4) throw new Error("RPC unreachable — cannot get blockhash");
-                await new Promise((r) => setTimeout(r, 1000));
-            }
-        }
+        /* ───── 2. Build transaction ───── */
 
-        const { blockhash, lastValidBlockHeight } = await blockhashResponse!;
+        const rewardKeypair = getRewardKeypair();
 
-        // 3. Build & send transaction
+        const { blockhash, lastValidBlockHeight } =
+            await connection.getLatestBlockhash("confirmed");
+
         const recipient = new PublicKey(walletAddress);
-        const lamports = Math.round(Number(claim.amount) * LAMPORTS_PER_SOL);
+        const lamports = Math.round(
+            claim.amount * LAMPORTS_PER_SOL
+        );
 
-        const transaction = new Transaction();
-        transaction.add(
+        const tx = new Transaction();
+
+        tx.feePayer = rewardKeypair.publicKey;
+        tx.recentBlockhash = blockhash;
+        tx.lastValidBlockHeight = lastValidBlockHeight;
+
+        tx.add(
             SystemProgram.transfer({
                 fromPubkey: rewardKeypair.publicKey,
                 toPubkey: recipient,
@@ -109,22 +143,22 @@ export async function POST(req: Request) {
             })
         );
 
-        transaction.recentBlockhash = blockhash;
-        transaction.lastValidBlockHeight = lastValidBlockHeight;
-        transaction.feePayer = rewardKeypair.publicKey;
-        transaction.sign(rewardKeypair);
+        tx.sign(rewardKeypair);
 
-        txSignature = await connection.sendRawTransaction(transaction.serialize(), {
-            skipPreflight: false,
-            maxRetries: 5,
-        });
+        /* ───── 3. Send transaction ───── */
+
+        const signature = await connection.sendRawTransaction(
+            tx.serialize(),
+            { maxRetries: 5 }
+        );
 
         await connection.confirmTransaction(
-            { signature: txSignature, blockhash, lastValidBlockHeight },
+            { signature, blockhash, lastValidBlockHeight },
             "confirmed"
         );
 
-        // 4. Update balance + log transaction
+        /* ───── 4. Persist success ───── */
+
         await prisma.$transaction(async (tx) => {
             await tx.user.update({
                 where: { id: claim.userId },
@@ -137,27 +171,29 @@ export async function POST(req: Request) {
                     amount: claim.amount,
                     type: "REWARD",
                     status: "SUCCESS",
-                    txSignature,
+                    txSignature: signature,
                 },
             });
         });
 
         return NextResponse.json({
             success: true,
-            amount: Number(claim.amount).toFixed(6),
-            txSignature,
-            explorer: `https://solana.fm/tx/${txSignature}${RPC_URL.includes("devnet") ? "?cluster=devnet" : ""}`,
+            amount: claim.amount.toFixed(6),
+            txSignature: signature,
+            explorer: `https://orb.helius.xyz/tx/${signature}?cluster=devnet`,
         });
-    } catch (error: any) {
-        console.error("Reward claim failed:", error);
+    } catch (err: any) {
+        console.error("Reward claim failed:", err);
+
+        const message =
+            err.message === "ALREADY_CLAIMED"
+                ? "Already claimed"
+                : err.message === "NOT_WINNER"
+                    ? "Not a winning game"
+                    : "Reward claim failed";
+
         return NextResponse.json(
-            {
-                error: error.message.includes("claimed")
-                    ? "Already claimed"
-                    : error.message.includes("win")
-                        ? "Not a winning game"
-                        : "Claim failed — try again",
-            },
+            { error: message },
             { status: 400 }
         );
     }
