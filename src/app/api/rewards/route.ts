@@ -22,7 +22,14 @@ if (!process.env.WALLET_ENCRYPTION_KEY) {
     throw new Error("WALLET_ENCRYPTION_KEY missing");
 }
 
-const RPC_URL = process.env.RPC_URL ?? "https://api.devnet.solana.com";
+const RPC_URL =
+    process.env.RPC_URL ?? "https://api.devnet.solana.com";
+
+/* ──────────────────────────────────────────────
+   SOLANA CONNECTION
+────────────────────────────────────────────── */
+
+const connection = new Connection(RPC_URL, "confirmed");
 
 /* ──────────────────────────────────────────────
    DECRYPT SOLANA REWARD WALLET
@@ -42,16 +49,20 @@ function decryptRewardWallet(): Uint8Array {
         throw new Error("Invalid AES-256 key length");
     }
 
+    const iv = Buffer.from(encrypted.iv, "hex"); // MUST be 12 bytes
+    const tag = Buffer.from(encrypted.tag, "hex");
+    const data = Buffer.from(encrypted.data, "hex");
+
     const decipher = crypto.createDecipheriv(
         "aes-256-gcm",
         key,
-        Buffer.from(encrypted.iv, "hex")
+        iv
     );
 
-    decipher.setAuthTag(Buffer.from(encrypted.tag, "hex"));
+    decipher.setAuthTag(tag);
 
     const decrypted = Buffer.concat([
-        decipher.update(Buffer.from(encrypted.data, "hex")),
+        decipher.update(data),
         decipher.final(),
     ]);
 
@@ -65,12 +76,6 @@ function decryptRewardWallet(): Uint8Array {
 function getRewardKeypair(): Keypair {
     return Keypair.fromSecretKey(decryptRewardWallet());
 }
-
-/* ──────────────────────────────────────────────
-   SOLANA CONNECTION (safe)
-────────────────────────────────────────────── */
-
-const connection = new Connection(RPC_URL, "confirmed");
 
 /* ──────────────────────────────────────────────
    NEXT CONFIG
@@ -93,7 +98,7 @@ export async function POST(req: Request) {
             );
         }
 
-        /* ───── 1. Atomic claim lock ───── */
+        /* ───── 1. Atomic claim lock (DB-first) ───── */
 
         const claim = await prisma.$transaction(async (tx) => {
             const game = await tx.gameResult.findUnique({
@@ -104,11 +109,15 @@ export async function POST(req: Request) {
             if (!game) throw new Error("GAME_NOT_FOUND");
             if (!game.won) throw new Error("NOT_WINNER");
             if (!game.reward) throw new Error("NO_REWARD");
-            if (game.rewardEntry?.claimed) throw new Error("ALREADY_CLAIMED");
+            if (game.rewardEntry?.claimed)
+                throw new Error("ALREADY_CLAIMED");
 
             await tx.reward.update({
                 where: { gameResultId: gameId },
-                data: { claimed: true, claimedAt: new Date() },
+                data: {
+                    claimed: true,
+                    claimedAt: new Date(),
+                },
             });
 
             return {
@@ -117,7 +126,7 @@ export async function POST(req: Request) {
             };
         });
 
-        /* ───── 2. Build transaction ───── */
+        /* ───── 2. Build Solana transaction ───── */
 
         const rewardKeypair = getRewardKeypair();
 
@@ -129,13 +138,13 @@ export async function POST(req: Request) {
             claim.amount * LAMPORTS_PER_SOL
         );
 
-        const tx = new Transaction();
+        const transaction = new Transaction();
 
-        tx.feePayer = rewardKeypair.publicKey;
-        tx.recentBlockhash = blockhash;
-        tx.lastValidBlockHeight = lastValidBlockHeight;
+        transaction.feePayer = rewardKeypair.publicKey;
+        transaction.recentBlockhash = blockhash;
+        transaction.lastValidBlockHeight = lastValidBlockHeight;
 
-        tx.add(
+        transaction.add(
             SystemProgram.transfer({
                 fromPubkey: rewardKeypair.publicKey,
                 toPubkey: recipient,
@@ -143,12 +152,12 @@ export async function POST(req: Request) {
             })
         );
 
-        tx.sign(rewardKeypair);
+        transaction.sign(rewardKeypair);
 
-        /* ───── 3. Send transaction ───── */
+        /* ───── 3. Send & confirm transaction ───── */
 
         const signature = await connection.sendRawTransaction(
-            tx.serialize(),
+            transaction.serialize(),
             { maxRetries: 5 }
         );
 
@@ -162,7 +171,9 @@ export async function POST(req: Request) {
         await prisma.$transaction(async (tx) => {
             await tx.user.update({
                 where: { id: claim.userId },
-                data: { balance: { increment: claim.amount } },
+                data: {
+                    balance: { increment: claim.amount },
+                },
             });
 
             await tx.transaction.create({
@@ -180,7 +191,7 @@ export async function POST(req: Request) {
             success: true,
             amount: claim.amount.toFixed(6),
             txSignature: signature,
-            explorer: `https://orb.helius.xyz/tx/${signature}?cluster=devnet`,
+            explorer: `https://explorer.solana.com/tx/${signature}?cluster=devnet`,
         });
     } catch (err: any) {
         console.error("Reward claim failed:", err);
@@ -190,7 +201,9 @@ export async function POST(req: Request) {
                 ? "Already claimed"
                 : err.message === "NOT_WINNER"
                     ? "Not a winning game"
-                    : "Reward claim failed";
+                    : err.message === "NO_REWARD"
+                        ? "No reward available"
+                        : "Reward claim failed";
 
         return NextResponse.json(
             { error: message },

@@ -42,7 +42,7 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/types/global.d.ts"
-  ],
+, "scripts/encrypt-wallet.js"  ],
   "exclude": [
     "node_modules"
   ]
