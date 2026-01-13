@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import { Connection, LAMPORTS_PER_SOL, ParsedInstruction, PartiallyDecodedInstruction } from "@solana/web3.js";
+import { PrismaClient } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export async function GET() {
       },
     });
 
-    const formatted = bids.map((b) => ({
+    const formatted = bids.map((b: typeof bids[number]) => ({
       id: b.id,
       wallet: b.user.walletAddress || "Anon",
       amount: Number(b.amount),
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid transaction" }, { status: 400 });
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: PrismaClient) => {
       // Upsert user
       const user = await tx.user.upsert({
         where: { walletAddress },

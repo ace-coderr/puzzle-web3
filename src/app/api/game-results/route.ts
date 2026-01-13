@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { Decimal } from "decimal.js";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({
-      results: results.map((r) => ({
+      results: results.map((r: typeof results[number]) => ({
         id: r.gameId,
         time: r.time,
         bidding: Number(r.bidding),
@@ -102,11 +103,11 @@ export async function POST(req: NextRequest) {
 
     const rewardDecimal =
       won === true
-        ? new Prisma.Decimal(bidAmount * multiplier)
+        ? new Decimal(bidAmount * multiplier)
         : null;
 
     // --- Atomic transaction ---
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.gameResult.upsert({
         where: { gameId },
         update: {

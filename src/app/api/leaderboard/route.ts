@@ -13,7 +13,7 @@ export async function GET() {
             _sum: { bidding: true },
         });
 
-        const userIds = wins.map((w) => w.userId);
+        const userIds = wins.map((w: typeof wins[number]) => w.userId);
         if (userIds.length === 0) {
             return NextResponse.json({ leaderboard: [], myRank: null });
         }
@@ -23,8 +23,8 @@ export async function GET() {
             select: { id: true, walletAddress: true },
         });
 
-        const userMap = new Map(users.map((u) => [u.id, u.walletAddress]));
-        const sortedWins = wins.sort((a, b) => {
+        const userMap = new Map<string, string>(users.map((u: { id: string; walletAddress: string }) => [u.id, u.walletAddress]));
+        const sortedWins = wins.sort((a: typeof wins[number], b: typeof wins[number]) => {
             const solA = Number(a._sum.bidding ?? 0);
             const solB = Number(b._sum.bidding ?? 0);
             if (solB !== solA) return solB - solA;
@@ -35,7 +35,7 @@ export async function GET() {
 
         let myRank: any = null;
 
-        sortedWins.forEach((item, idx) => {
+        sortedWins.forEach((item: typeof sortedWins[number], idx: number) => {
             const wallet = userMap.get(item.userId);
             if (!wallet) return;
             const totalBid = Number(item._sum.bidding ?? 0);

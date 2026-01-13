@@ -100,7 +100,7 @@ export async function POST(req: Request) {
 
         /* ───── 1. Atomic claim lock (DB-first) ───── */
 
-        const claim = await prisma.$transaction(async (tx) => {
+        const claim = await prisma.$transaction(async (tx: any) => {
             const game = await tx.gameResult.findUnique({
                 where: { gameId },
                 include: { rewardEntry: true },
@@ -168,7 +168,7 @@ export async function POST(req: Request) {
 
         /* ───── 4. Persist success ───── */
 
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: any) => {
             await tx.user.update({
                 where: { id: claim.userId },
                 data: {
