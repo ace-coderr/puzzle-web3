@@ -1,7 +1,6 @@
 "use client";
 
 import Home from "./home";
-// import { Navbar } from "./navbar";
 
 export default function DashboardPage() {
     return (

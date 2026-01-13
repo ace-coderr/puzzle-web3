@@ -82,12 +82,11 @@ export function Navbar() {
     };
   }, [publicKey]);
 
-  /* GLOBAL CLICK SOUND - MODIFIED TO EXCLUDE GAME ELEMENTS */
+  /* GLOBAL CLICK SOUND */
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (muted) return;
 
-      // Don't play click sound on game elements
       const target = e.target as HTMLElement;
       const isGameElement =
         target.closest('.puzzle-board') ||
