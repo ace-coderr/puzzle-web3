@@ -31,7 +31,7 @@ export function Navbar() {
   const [balance, setBalance] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  /* ✅ CLIENT MOUNT */
+  /* CLIENT MOUNT */
   useEffect(() => setMounted(true), []);
 
   // UNLOCK AUDIO ON FIRST INTERACTION
