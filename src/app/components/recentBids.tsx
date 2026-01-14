@@ -17,7 +17,7 @@ function RecentActivity() {
 
   const fetchBids = useCallback(async () => {
     try {
-      const res = await fetch("/api/bids");
+      const res = await fetch("/api/bids", { cache: "no-store" });
       const data = await res.json();
       setBids(Array.isArray(data) ? data : data.bids || []);
     } catch (err) {

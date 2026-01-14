@@ -80,6 +80,7 @@ export async function GET() {
       txSignature: b.txSignature,
       network: "devnet",
     }));
+
     return NextResponse.json(formatted);
   } catch (error) {
     console.error("GET /api/bids failed:", error);
@@ -135,7 +136,7 @@ export async function POST(req: Request) {
       // Create bid
       const bid = await tx.bid.create({
         data: {
-          gameResultId: gameResult.gameId, // matches schema
+          gameResultId: gameResult.gameId,
           userId: user.id,
           amount: new Decimal(amount),
           status: "SUCCESS",
@@ -172,10 +173,10 @@ export async function POST(req: Request) {
         wallet: walletAddress,
         amount: Number(result.amount),
         createdAt: result.createdAt.toISOString(),
-        gameId: result.gameResultId,
+        gameId,
         txSignature: result.txSignature,
         network: "devnet",
-      }
+      },
     });
 
   } catch (error: any) {

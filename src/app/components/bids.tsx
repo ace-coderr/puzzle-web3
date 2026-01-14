@@ -58,19 +58,15 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       const toPubkey = new PublicKey(TREASURY_WALLET);
       const lamports = Math.round(amount * LAMPORTS_PER_SOL);
 
+      // Build transaction
       const transaction = new Transaction();
 
-      // Priority fees
       transaction.add(
-        ComputeBudgetProgram.setComputeUnitPrice({
-          microLamports: 5_000,
-        })
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 5_000 })
       );
 
       transaction.add(
-        ComputeBudgetProgram.setComputeUnitLimit({
-          units: 200_000,
-        })
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 })
       );
 
       transaction.add(
@@ -85,6 +81,7 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       transaction.recentBlockhash = latestBlockhash.blockhash;
       transaction.feePayer = fromPubkey;
 
+      // Sign + send
       const signedTx = await wallet.signTransaction(transaction);
 
       const txSignature = await connection.sendRawTransaction(
@@ -92,7 +89,7 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
         { skipPreflight: false }
       );
 
-      // MODERN confirmation
+      // Confirm transaction
       await connection.confirmTransaction(
         {
           signature: txSignature,
@@ -102,9 +99,13 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
         "confirmed"
       );
 
-      const gameId = `game-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      // Generate game ID
+      const gameId = `game-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
 
-      await fetch("/api/bids", {
+      // Persist bid to backend
+      const res = await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -116,16 +117,31 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
         }),
       });
 
+      const json = await res.json();
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to save bid");
+      }
+
+      document.dispatchEvent(new CustomEvent("recent-bid"));
+
+      // Update wallet balance
       if (onBalanceUpdate) {
         const balance = await connection.getBalance(fromPubkey);
         onBalanceUpdate(balance / LAMPORTS_PER_SOL);
       }
 
-      document.dispatchEvent(new CustomEvent("puzzle-restart", {
-        detail: { walletAddress: fromPubkey.toBase58(), amount, gameId, difficulty }
-      }));
-
-      document.dispatchEvent(new CustomEvent("recent-bid"));
+      // Restart puzzle/game
+      document.dispatchEvent(
+        new CustomEvent("puzzle-restart", {
+          detail: {
+            walletAddress: fromPubkey.toBase58(),
+            amount,
+            gameId,
+            difficulty,
+          },
+        })
+      );
 
       toast.success(`Bid placed: ${amount} SOL`, { id: loadingToast });
     } catch (err) {
