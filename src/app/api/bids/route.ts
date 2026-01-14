@@ -130,13 +130,12 @@ export async function POST(req: Request) {
           bidding: new Decimal(amount),
           difficulty,
         },
-        select: { gameId: true },
       });
 
       // Create bid
       const bid = await tx.bid.create({
         data: {
-          gameResultId: gameResult.gameId,
+          gameResultId: gameResult.gameId, // matches schema
           userId: user.id,
           amount: new Decimal(amount),
           status: "SUCCESS",
@@ -166,7 +165,18 @@ export async function POST(req: Request) {
       return bid;
     });
 
-    return NextResponse.json({ success: true, bid: result });
+    return NextResponse.json({
+      success: true,
+      bid: {
+        id: result.id,
+        wallet: walletAddress,
+        amount: Number(result.amount),
+        createdAt: result.createdAt.toISOString(),
+        gameId: result.gameResultId,
+        txSignature: result.txSignature,
+        network: "devnet",
+      }
+    });
 
   } catch (error: any) {
     console.error("POST /api/bids failed:", error);
