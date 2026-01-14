@@ -21,10 +21,11 @@ export async function GET() {
 
     const formatted = bids.map((b: any) => ({
       id: b.id,
-      walletAddress: b.user.walletAddress || "Anon",
+      wallet: b.user.walletAddress || "Anon",
       amount: Number(b.amount),
       createdAt: b.createdAt.toISOString(),
       gameId: b.gameResult.gameId,
+      txSignature: b.txSignature || undefined,
     }));
 
     return NextResponse.json(formatted);
