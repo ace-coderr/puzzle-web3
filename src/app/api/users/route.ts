@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
     try {
         const { walletAddress } = await req.json();
-        if (!walletAddress)
-            return NextResponse.json({ error: "walletAddress required" }, { status: 400 });
+
+        if (!walletAddress) {
+            return NextResponse.json(
+                { error: "walletAddress required" },
+                { status: 400 }
+            );
+        }
 
         const user = await prisma.user.upsert({
             where: { walletAddress },
@@ -16,10 +22,11 @@ export async function POST(req: Request) {
         });
 
         return NextResponse.json(user);
-    } catch (error: any) {
+    } catch (error) {
         console.error("❌ User setup error:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-    } finally {
-        await prisma.$disconnect();
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        );
     }
 }

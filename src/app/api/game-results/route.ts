@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({
-      results: results.map((r) => ({
+      results: results.map((r: any) => ({
         id: r.gameId,
         time: r.time,
         bidding: Number(r.bidding),
@@ -100,19 +101,19 @@ export async function POST(req: NextRequest) {
         difficulty === "medium" ? 1.5 :
           3.0;
 
-    const rewardDecimal =
+    const payout =
       won === true
-        ? new Prisma.Decimal(bidAmount * multiplier)
+        ? new Decimal(bidAmount * multiplier)
         : null;
 
     // --- Atomic transaction ---
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.gameResult.upsert({
         where: { gameId },
         update: {
           bidding: bidAmount,
           won: Boolean(won),
-          reward: rewardDecimal,
+          reward: payout,
           difficulty,
           updatedAt: new Date(),
         },
@@ -123,11 +124,11 @@ export async function POST(req: NextRequest) {
           bidding: bidAmount,
           won: Boolean(won),
           difficulty,
-          reward: rewardDecimal,
+          reward: payout,
         },
       });
 
-      if (won && rewardDecimal) {
+      if (won && payout) {
         await tx.reward.upsert({
           where: { gameResultId: gameId },
           update: {},
@@ -136,7 +137,7 @@ export async function POST(req: NextRequest) {
             userId: user.id,
             title: `${difficulty.toUpperCase()} Puzzle Win`,
             description: `Completed in ${timeNum}s`,
-            amount: rewardDecimal,
+            amount: payout,
           },
         });
       }

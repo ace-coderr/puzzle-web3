@@ -19,7 +19,7 @@ export async function GET() {
       },
     });
 
-    const formatted = bids.map((b) => ({
+    const formatted = bids.map((b: any) => ({
       id: b.id,
       walletAddress: b.user.walletAddress || "Anon",
       amount: Number(b.amount),

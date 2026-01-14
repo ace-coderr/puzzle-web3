@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import {
     Connection,
     Keypair,
@@ -100,7 +101,7 @@ export async function POST(req: Request) {
 
         /* ───── 1. Atomic claim lock (DB-first) ───── */
 
-        const claim = await prisma.$transaction(async (tx) => {
+        const claim = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             const game = await tx.gameResult.findUnique({
                 where: { gameId },
                 include: { rewardEntry: true },
@@ -168,7 +169,7 @@ export async function POST(req: Request) {
 
         /* ───── 4. Persist success ───── */
 
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             await tx.user.update({
                 where: { id: claim.userId },
                 data: {
