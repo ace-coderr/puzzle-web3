@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Connection, LAMPORTS_PER_SOL, Transaction, SystemProgram, PublicKey } from "@solana/web3.js";
 import type { WalletContextState } from "@solana/wallet-adapter-react";
 import { toast } from "sonner";
+import { ComputeBudgetProgram } from "@solana/web3.js";
 import RecentActivity from "./recentBids";
 
 type BidComponentProps = {
@@ -43,6 +44,7 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       toast.warning("Please connect your wallet");
       return;
     }
+
     if (!amount || amount <= 0) {
       toast.error("Enter a valid bid amount");
       return;
@@ -56,19 +58,52 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       const toPubkey = new PublicKey(TREASURY_WALLET);
       const lamports = Math.round(amount * LAMPORTS_PER_SOL);
 
-      const transaction = new Transaction().add(SystemProgram.transfer({ fromPubkey, toPubkey, lamports }));
+      const transaction = new Transaction();
 
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
+      // Priority fees
+      transaction.add(
+        ComputeBudgetProgram.setComputeUnitPrice({
+          microLamports: 5_000,
+        })
+      );
+
+      transaction.add(
+        ComputeBudgetProgram.setComputeUnitLimit({
+          units: 200_000,
+        })
+      );
+
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey,
+          toPubkey,
+          lamports,
+        })
+      );
+
+      const latestBlockhash = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = latestBlockhash.blockhash;
       transaction.feePayer = fromPubkey;
 
       const signedTx = await wallet.signTransaction(transaction);
-      const txSignature = await connection.sendRawTransaction(signedTx.serialize());
-      await connection.confirmTransaction(txSignature, "confirmed");
+
+      const txSignature = await connection.sendRawTransaction(
+        signedTx.serialize(),
+        { skipPreflight: false }
+      );
+
+      // MODERN confirmation
+      await connection.confirmTransaction(
+        {
+          signature: txSignature,
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+        },
+        "confirmed"
+      );
 
       const gameId = `game-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-      // Record bid in backend
       await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -86,16 +121,16 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
         onBalanceUpdate(balance / LAMPORTS_PER_SOL);
       }
 
-      // Trigger puzzle
       document.dispatchEvent(new CustomEvent("puzzle-restart", {
         detail: { walletAddress: fromPubkey.toBase58(), amount, gameId, difficulty }
       }));
 
       document.dispatchEvent(new CustomEvent("recent-bid"));
+
       toast.success(`Bid placed: ${amount} SOL`, { id: loadingToast });
     } catch (err) {
       console.error(err);
-      toast.error("Transaction failed or rejected", { id: loadingToast });
+      toast.error("Transaction failed or timed out", { id: loadingToast });
     } finally {
       setLoading(false);
     }

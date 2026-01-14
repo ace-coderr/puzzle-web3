@@ -6,36 +6,56 @@ import { Connection, LAMPORTS_PER_SOL, ParsedInstruction, PartiallyDecodedInstru
 
 export const dynamic = "force-dynamic";
 
-const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+const connection = new Connection("https://api.devnet.solana.com", "finalized");
 
 // Safe Tx verification for Devnet
-async function verifyTxSignature(txSignature: string, walletAddress: string, amount: number) {
-  try {
-    const tx = await connection.getParsedTransaction(txSignature, { commitment: "confirmed" });
-    if (!tx) throw new Error("Transaction not found");
+async function verifyTxSignature(
+  txSignature: string,
+  walletAddress: string,
+  amount: number
+) {
+  const TREASURY_WALLET = process.env.TREASURY_WALLET!;
+  const MAX_RETRIES = 5;
 
-    const fromAccount = tx.transaction.message.accountKeys[0].pubkey.toString();
+  for (let i = 0; i < MAX_RETRIES; i++) {
+    try {
+      const tx = await connection.getParsedTransaction(txSignature, {
+        commitment: "finalized",
+        maxSupportedTransactionVersion: 0,
+      });
 
-    const transferInstruction = tx.transaction.message.instructions.find(
-      (inst: ParsedInstruction | PartiallyDecodedInstruction): inst is ParsedInstruction =>
-        inst.programId.toString() === "11111111111111111111111111111111" &&
-        'parsed' in inst &&
-        inst.parsed?.type === "transfer"
-    );
+      if (!tx) {
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
 
-    if (!transferInstruction) throw new Error("No parsed transfer instruction found");
+      const instruction = tx.transaction.message.instructions.find(
+        (inst): inst is ParsedInstruction =>
+          inst.programId.toString() === "11111111111111111111111111111111" &&
+          "parsed" in inst &&
+          inst.parsed?.type === "transfer"
+      );
 
-    const transferredLamports = transferInstruction.parsed.info.lamports;
+      if (!instruction) throw new Error("No transfer instruction");
 
-    // Allow tiny rounding differences
-    if (fromAccount !== walletAddress || transferredLamports < amount * LAMPORTS_PER_SOL) {
-      throw new Error("Transaction mismatch");
+      const { source, destination, lamports } = instruction.parsed.info;
+
+      if (
+        source !== walletAddress ||
+        destination !== TREASURY_WALLET ||
+        lamports < amount * LAMPORTS_PER_SOL
+      ) {
+        throw new Error("Transaction mismatch");
+      }
+
+      return true;
+    } catch (err) {
+      console.warn(`Tx verify retry ${i + 1}`);
+      await new Promise(r => setTimeout(r, 2000));
     }
-    return true;
-  } catch (error) {
-    console.error("Tx verification failed:", error);
-    return false;
   }
+
+  return false;
 }
 
 // GET — Recent bids
@@ -74,6 +94,18 @@ export async function POST(req: Request) {
 
     if (!walletAddress || !amount || !gameId || !txSignature) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+    }
+
+    // Check if txSignature is already used
+    const alreadyUsed = await prisma.bid.findFirst({
+      where: { txSignature },
+    });
+
+    if (alreadyUsed) {
+      return NextResponse.json(
+        { error: "Transaction already used" },
+        { status: 409 }
+      );
     }
 
     // Verify tx signature on Devnet
