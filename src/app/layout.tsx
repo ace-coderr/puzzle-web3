@@ -3,6 +3,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next"
 
 import { AppWalletProvider } from "./components/appWalletProvider";
 import { Navbar } from "./components/navbar";
@@ -51,7 +52,7 @@ export default function RootLayout({
           ${GeistMono.variable}
           font-sans
           antialiased
-          bg-gradient-to-br from-slate-950 via-gray-900 to-slate-950
+          bg-linear-to-br from-slate-950 via-gray-900 to-slate-950
           min-h-screen
         `}
       >
@@ -61,6 +62,7 @@ export default function RootLayout({
 
           <main className="min-h-screen page-content">
             {children}
+            <Analytics />
           </main>
         </AppWalletProvider>
 
