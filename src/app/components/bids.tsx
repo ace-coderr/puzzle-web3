@@ -29,8 +29,12 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
   const [hoveredDifficulty, setHoveredDifficulty] = useState<keyof typeof DIFFICULTY_META | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
-  const connection = new Connection(rpcUrl, "confirmed");
+  const rpcUrl =
+    process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
+
+  const connection = new Connection(rpcUrl, {
+    commitment: "confirmed",
+  });
 
   const quickOptions = [0.1, 0.5, 1, 2];
 
@@ -39,8 +43,9 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
     document.dispatchEvent(new CustomEvent("difficulty-change", { detail: d }));
   };
 
+  // Handle placing a bid
   const handleBid = async () => {
-    if (!wallet.publicKey || !wallet.signTransaction) {
+    if (!wallet.publicKey || !wallet.sendTransaction) {
       toast.warning("Please connect your wallet");
       return;
     }
@@ -51,25 +56,18 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
     }
 
     setLoading(true);
-    const loadingToast = toast.loading("Waiting for wallet confirmation...");
+    const loadingToast = toast.loading("Confirm transaction in your wallet...");
 
     try {
       const fromPubkey = wallet.publicKey;
       const toPubkey = new PublicKey(TREASURY_WALLET);
-      const lamports = Math.round(amount * LAMPORTS_PER_SOL);
 
-      // Build transaction
-      const transaction = new Transaction();
+      const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
+      if (lamports <= 0) throw new Error("Invalid amount");
 
-      transaction.add(
-        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 5_000 })
-      );
-
-      transaction.add(
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 })
-      );
-
-      transaction.add(
+      const transaction = new Transaction().add(
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 200_000 }),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1_000 }),
         SystemProgram.transfer({
           fromPubkey,
           toPubkey,
@@ -77,34 +75,20 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
         })
       );
 
-      const latestBlockhash = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = latestBlockhash.blockhash;
       transaction.feePayer = fromPubkey;
 
-      // Sign + send
-      const signedTx = await wallet.signTransaction(transaction);
-
-      const txSignature = await connection.sendRawTransaction(
-        signedTx.serialize(),
+      const txSignature = await wallet.sendTransaction(
+        transaction,
+        connection,
         { skipPreflight: false }
       );
 
-      // Confirm transaction
-      await connection.confirmTransaction(
-        {
-          signature: txSignature,
-          blockhash: latestBlockhash.blockhash,
-          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-        },
-        "confirmed"
-      );
+      await connection.confirmTransaction(txSignature, "finalized");
 
-      // Generate game ID
       const gameId = `game-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2)}`;
 
-      // Persist bid to backend
       const res = await fetch("/api/bids", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,20 +102,17 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       });
 
       const json = await res.json();
-
       if (!res.ok || !json.success) {
         throw new Error(json.error || "Failed to save bid");
       }
 
       document.dispatchEvent(new CustomEvent("recent-bid"));
 
-      // Update wallet balance
       if (onBalanceUpdate) {
         const balance = await connection.getBalance(fromPubkey);
         onBalanceUpdate(balance / LAMPORTS_PER_SOL);
       }
 
-      // Restart puzzle/game
       document.dispatchEvent(
         new CustomEvent("puzzle-restart", {
           detail: {
@@ -144,13 +125,16 @@ export default function BidComponent({ wallet, onBalanceUpdate }: BidComponentPr
       );
 
       toast.success(`Bid placed: ${amount} SOL`, { id: loadingToast });
-    } catch (err) {
-      console.error(err);
-      toast.error("Transaction failed or timed out", { id: loadingToast });
+    } catch (err: any) {
+      console.error("Bid failed:", err);
+      toast.error(err?.message || "Transaction failed", {
+        id: loadingToast,
+      });
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="flex flex-col gap-10 w-full max-w-none mx-auto">

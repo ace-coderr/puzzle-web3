@@ -14,49 +14,54 @@ async function verifyTxSignature(
   walletAddress: string,
   amount: number
 ) {
-  const TREASURY_WALLET = process.env.TREASURY_WALLET!;
+  const TREASURY_WALLET =
+    process.env.TREASURY_WALLET ||
+    process.env.NEXT_PUBLIC_TREASURY_WALLET;
+
+  if (!TREASURY_WALLET) {
+    throw new Error("Treasury wallet not configured");
+  }
+
+  const expectedLamports = Math.floor(amount * LAMPORTS_PER_SOL);
   const MAX_RETRIES = 5;
 
   for (let i = 0; i < MAX_RETRIES; i++) {
-    try {
-      const tx = await connection.getParsedTransaction(txSignature, {
-        commitment: "finalized",
-        maxSupportedTransactionVersion: 0,
-      });
+    const tx = await connection.getParsedTransaction(txSignature, {
+      commitment: "finalized",
+      maxSupportedTransactionVersion: 0,
+    });
 
-      if (!tx) {
-        await new Promise(r => setTimeout(r, 2000));
-        continue;
-      }
+    if (!tx) {
+      await new Promise(r => setTimeout(r, 2000));
+      continue;
+    }
 
-      const instruction = tx.transaction.message.instructions.find(
-        (inst): inst is ParsedInstruction =>
-          inst.programId.toString() === "11111111111111111111111111111111" &&
-          "parsed" in inst &&
-          inst.parsed?.type === "transfer"
-      );
+    const transfers = tx.transaction.message.instructions.filter(
+      (inst): inst is ParsedInstruction =>
+        inst.programId.toBase58() ===
+        "11111111111111111111111111111111" &&
+        "parsed" in inst &&
+        inst.parsed?.type === "transfer"
+    );
 
-      if (!instruction) throw new Error("No transfer instruction");
-
-      const { source, destination, lamports } = instruction.parsed.info;
+    for (const inst of transfers) {
+      const { source, destination, lamports } = inst.parsed.info;
 
       if (
-        source !== walletAddress ||
-        destination !== TREASURY_WALLET ||
-        lamports < amount * LAMPORTS_PER_SOL
+        source === walletAddress &&
+        destination === TREASURY_WALLET &&
+        Number(lamports) >= expectedLamports
       ) {
-        throw new Error("Transaction mismatch");
+        return true;
       }
-
-      return true;
-    } catch (err) {
-      console.warn(`Tx verify retry ${i + 1}`);
-      await new Promise(r => setTimeout(r, 2000));
     }
+
+    await new Promise(r => setTimeout(r, 2000));
   }
 
   return false;
 }
+
 
 // GET — Recent bids
 export async function GET() {
