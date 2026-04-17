@@ -426,7 +426,7 @@ export function PositionElements() {
 
             {/* ----- Puzzle board ----- */}
             <div className="flex justify-center items-center gap-10 mt-12 w-full puzzle-board">
-                <div className="relative p-3 rounded-2xl bg-gradient-to-br from-white/10 via-white/5 to-transparent shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+                <div className="relative p-3 rounded-2xl bg-linear-to-br from-white/10 via-white/5 to-transparent shadow-[0_0_60px_rgba(0,0,0,0.6)]">
                     <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
                     <div className="relative w-[40vw] h-[24vw] rounded-xl overflow-hidden bg-black/40 border border-white/10">
                         {(() => {
@@ -494,7 +494,7 @@ export function PositionElements() {
                 <div className="text-white text-5xl font-bold opacity-80 select-none">➜</div>
 
                 {/* ================== REFERENCE IMAGE ================== */}
-                <div className="relative p-3 rounded-2xl bg-gradient-to-br from-white/10 via-white/5 to-transparent shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+                <div className="relative p-3 rounded-2xl bg-linear-to-br from-white/10 via-white/5 to-transparent shadow-[0_0_60px_rgba(0,0,0,0.6)]">
                     <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20 pointer-events-none" />
                     <div className="w-[40vw] h-[24vw] rounded-xl overflow-hidden border border-white/10">
                         <img
