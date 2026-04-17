@@ -32,7 +32,7 @@ async function saveResult(
     const gameId = localStorage.getItem("currentGameId");
     if (!gameId) return;
     try {
-        const res = await fetch("/api/game-results", {
+        await fetch("/api/game-results", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
